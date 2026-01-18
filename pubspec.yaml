@@ -37,6 +37,11 @@ dependencies:
   
   # Camera plugin for capturing images
   camera: ^0.11.0+2
+  provider: ^6.1.1
+  shared_preferences: ^2.2.2
+  google_fonts: ^6.1.0
+  flutter_tts: ^3.8.3
+  lucide_icons: ^0.257.0
 
 dev_dependencies:
   flutter_test:
