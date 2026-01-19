@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:google_fonts/google_fonts.dart'; // Assuming google_fonts is available as per pubspec
+import 'package:google_fonts/google_fonts.dart';
 import '../../main.dart';
 import '../child_selection/child_selection_screen.dart';
+import 'child_performance_screen.dart'; 
+import 'parent_home_screen.dart'; // Import to switch tabs
 import '../../core/audio_service.dart';
 
 class ParentDashboardScreen extends StatelessWidget {
@@ -13,130 +15,372 @@ class ParentDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Custom Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              child: Row(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Dashboard',
-                        style: GoogleFonts.poppins(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1E293B),
-                        ),
-                      ),
-                      Text(
-                        'Welcome, Parent!',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary, 
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(LucideIcons.bookOpen, color: Colors.white),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      // Settings action
-                    },
-                    icon: const Icon(LucideIcons.settings, color: Color(0xFF94A3B8)),
+                  const CircleAvatar(
+                    radius: 20,
+                    backgroundImage: NetworkImage('https://api.dicebear.com/7.x/avataaars/png?seed=Parent'), 
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 24),
 
-            const SizedBox(height: 20),
-
-            // My Little Learners Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'My Little Learners',
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF1E293B),
+              // Notification Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED), // Keep accent bg for now, or match theme? keeping for visual consistency
+                  // Ideally this should adapt too, maybe colorScheme.surfaceVariant
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(LucideIcons.bell, color: Color(0xFF9A3412), size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'New Learning Games Available!',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: const Color(0xFF431407),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => _showAddDialog(context),
-                    icon: const Icon(LucideIcons.plus, size: 18),
-                    label: Text(
-                      'Add Child',
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Explore exciting new games to make learning Amharic and English even more fun.',
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF78350F),
+                        height: 1.5,
+                      ),
                     ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF4F46E5), // Indigoish blue
+                    const SizedBox(height: 12),
+                    Text(
+                      'Read More',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF78350F),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 32),
 
-            const SizedBox(height: 16),
-
-            // Main Content Area (Child List or Empty State)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: state.children.isEmpty
-                    ? const _EmptyStateCard()
-                    : ListView.builder(
-                        itemCount: state.children.length,
-                        itemBuilder: (context, index) {
-                          final child = state.children[index];
-                          return Card(
-                            elevation: 2,
-                            shadowColor: Colors.black12,
-                            margin: const EdgeInsets.only(bottom: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(16),
-                              leading: CircleAvatar(
-                                radius: 28,
-                                backgroundImage: NetworkImage(child.avatar),
-                                onBackgroundImageError: (_, __) {}, // Handle error
-                                child: child.avatar.isEmpty ? const Icon(LucideIcons.user) : null,
+              // Your Children's Progress
+              Text(
+                "Your Children's Progress",
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Children List Component
+              state.children.isEmpty 
+               ? _buildEmptyChildrenState(context)
+               : SizedBox(
+                  height: 240, // Increased height to prevent overflow
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: state.children.length,
+                    clipBehavior: Clip.none,
+                    itemBuilder: (context, index) {
+                      final child = state.children[index];
+                      return Container(
+                        width: 280,
+                        margin: const EdgeInsets.only(right: 16),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: theme.cardTheme.color,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: theme.dividerColor),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05), // Subtle shadow
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 24,
+                                  backgroundImage: NetworkImage(child.avatar),
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      child.name,
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        const Icon(LucideIcons.trendingUp, size: 14, color: Color(0xFFF97316)),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Score: 92%', // Placeholder
+                                          style: GoogleFonts.poppins(
+                                            color: const Color(0xFF3B82F6),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  ],
+                                )
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Progress',
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      color: colorScheme.onSurface.withOpacity(0.7),
+                                    ),
+                                  ),
+                                  Text(
+                                    '85%',
+                                    style: GoogleFonts.poppins(color: colorScheme.onSurface.withOpacity(0.5)),
+                                  ),
+                                ],
                               ),
-                              title: Text(
-                                child.name,
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: 0.85,
+                                  backgroundColor: theme.dividerColor,
+                                  color: const Color(0xFF3B82F6), // Blue
+                                  minHeight: 8,
                                 ),
                               ),
-                              subtitle: Text(
-                                'Mastered ${child.mastery.length} items',
-                                style: GoogleFonts.poppins(color: Colors.grey[600]),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Last activity: 15 mins ago',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: colorScheme.onSurface.withOpacity(0.5),
+                                ),
                               ),
-                              trailing: const Icon(LucideIcons.chevronRight, color: Color(0xFF94A3B8)),
-                              onTap: () {
-                                audioService.playClick();
-                                state.selectChild(child);
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => const ChildSelectionScreen()));
-                              },
-                            ),
-                          );
-                        },
-                      ),
+                              const Spacer(),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                     audioService.playClick();
+                                     state.selectChild(child);
+                                     Navigator.push(context, MaterialPageRoute(builder: (context) => ChildPerformanceScreen(child: child)));
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    side: BorderSide(color: theme.dividerColor),
+                                  ),
+                                  child: Text(
+                                    'View Details',
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      color: colorScheme.onSurface.withOpacity(0.8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                
+              const SizedBox(height: 32),
+              
+              // Weekly Learning Time Chart
+              Text(
+                "Weekly Learning Time",
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              Text(
+                "Total hours spent learning this week",
+                style: GoogleFonts.poppins(color: colorScheme.onSurface.withOpacity(0.5)),
+              ),
+              const SizedBox(height: 24),
+              // Simple Placeholder Chart
+              Container(
+                height: 200,
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                   color: theme.cardTheme.color,
+                   borderRadius: BorderRadius.circular(24),
+                   border: Border.all(color: theme.dividerColor),
+                ),
+                child: CustomPaint(
+                  painter: _ChartPainter(color: colorScheme.primary, gridColor: theme.dividerColor),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Quick Actions
+              Text(
+                "Quick Actions",
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 16),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.6, // Adjusted to prevent overflow
+                children: [
+                  _buildActionCard(
+                    icon: LucideIcons.users,
+                    label: 'Enter Kids Mode',
+                    color: const Color(0xFF3B82F6), // Blue
+                    textColor: Colors.white,
+                    onTap: () {
+                       // Navigate to kids mode tab (Index 1)
+                       ParentHomeScreen.of(context)?.switchToTab(1);
+                    },
+                  ),
+                  _buildActionCard(
+                    icon: LucideIcons.userPlus,
+                    label: 'Add Child',
+                    color: theme.dividerColor, 
+                    textColor: colorScheme.onSurface,
+                    onTap: () => _showAddDialog(context),
+                  ),
+                  _buildActionCard(
+                    icon: LucideIcons.fileText,
+                    label: 'View Reports',
+                    color: theme.dividerColor,
+                    textColor: colorScheme.onSurface,
+                    onTap: () {},
+                  ),
+                  _buildActionCard(
+                    icon: LucideIcons.gamepad2,
+                    label: 'Browse Games',
+                    color: theme.dividerColor,
+                    textColor: colorScheme.onSurface,
+                    onTap: () {},
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyChildrenState(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        children: [
+          Icon(LucideIcons.users, size: 48, color: theme.iconTheme.color),
+          const SizedBox(height: 16),
+          Text(
+            "No children added yet",
+            style: GoogleFonts.poppins(color: theme.textTheme.bodyMedium?.color),
+          ),
+          TextButton(
+            onPressed: () => _showAddDialog(context),
+            child: const Text("Add a child"),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color textColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: textColor, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: textColor,
               ),
             ),
-
-            // Bottom Stats Panel
-            const _BottomStatsPanel(),
           ],
         ),
       ),
@@ -170,177 +414,61 @@ class ParentDashboardScreen extends StatelessWidget {
   }
 }
 
-class _EmptyStateCard extends StatelessWidget {
-  const _EmptyStateCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _DashedBorderPainter(color: const Color(0xFFE2E8F0), strokeWidth: 2, gap: 8, dash: 8),
-      child: Container(
-        width: double.infinity,
-        height: 250, // Approximate height from image
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              LucideIcons.trendingUp, // Placeholder for the zig-zag arrow
-              size: 48,
-              color: Colors.grey[300],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No children added yet.',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                color: const Color(0xFF94A3B8),
-              ),
-            ),
-            Text(
-              "Tap 'Add Child' to get started!",
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                color: const Color(0xFF94A3B8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomStatsPanel extends StatelessWidget {
-  const _BottomStatsPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    // Stats would ideally come from the state, hardcoded '0' for now as per design mock
-    final state = context.watch<AppState>();
-    
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Color(0xFF3B82F6), // Bright Blue
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(32),
-          topRight: Radius.circular(32),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(LucideIcons.barChart2, color: Colors.white70),
-              const SizedBox(width: 12),
-              Text(
-                'Group Overview',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildStatCard('${state.children.length}', 'KIDS'),
-              _buildStatCard('0', 'TASKS'), // Placeholder
-              _buildStatCard('A+', 'GRADE'), // Placeholder
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String value, String label) {
-    return Container(
-      width: 100,
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.white70,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DashedBorderPainter extends CustomPainter {
+class _ChartPainter extends CustomPainter {
   final Color color;
-  final double strokeWidth;
-  final double gap;
-  final double dash;
+  final Color gridColor;
 
-  _DashedBorderPainter({
-    required this.color,
-    this.strokeWidth = 1.0,
-    this.gap = 5.0,
-    this.dash = 5.0,
-  });
+  _ChartPainter({this.color = const Color(0xFF3B82F6), this.gridColor = Colors.grey});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
+    final Paint linePaint = Paint()
       ..color = color
-      ..strokeWidth = strokeWidth
+      ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
-    final Path path = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, size.width, size.height),
-        const Radius.circular(24),
-      ));
+    final Paint dotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
 
-    final Path dashedPath = _dashPath(path, dashWidth: dash, dashSpace: gap);
-    canvas.drawPath(dashedPath, paint);
-  }
+    // Grid lines
+    final Paint gridPaint = Paint()
+      ..color = gridColor.withOpacity(0.2)
+      ..strokeWidth = 1;
 
-  Path _dashPath(Path source, {required double dashWidth, required double dashSpace}) {
-    final Path path = Path();
-    for (final ui.PathMetric metric in source.computeMetrics()) {
-      double distance = 0.0;
-      while (distance < metric.length) {
-        path.addPath(
-          metric.extractPath(distance, distance + dashWidth),
-          Offset.zero,
-        );
-        distance += dashWidth + dashSpace;
-      }
+    // Draw horizontal grid lines
+    for (int i = 0; i < 5; i++) {
+      double y = size.height * (i / 4);
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
-    return path;
+
+    // Rough data points (normalized 0-1)
+    final points = [0.8, 0.6, 0.4, 0.5, 0.3, 0.1, 0.4]; 
+    final path = Path();
+    
+    // Width between points
+    final stepX = size.width / (points.length - 1);
+
+    for (int i = 0; i < points.length; i++) {
+        final x = i * stepX;
+        final y = points[i] * size.height; // Invert logic if usually bottom is 0, but top is 0 here so it works fine visually
+        
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          // Bezier curve for smoothness
+          final prevX = (i - 1) * stepX;
+          final prevY = points[i - 1] * size.height;
+          final midX = (prevX + x) / 2;
+          path.cubicTo(midX, prevY, midX, y, x, y);
+        }
+        
+        canvas.drawCircle(Offset(x, y), 4, dotPaint);
+    }
+    
+    canvas.drawPath(path, linePaint);
   }
 
   @override
-  bool shouldRepaint(_DashedBorderPainter oldDelegate) {
-    return color != oldDelegate.color ||
-        strokeWidth != oldDelegate.strokeWidth ||
-        gap != oldDelegate.gap ||
-        dash != oldDelegate.dash;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

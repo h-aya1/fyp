@@ -1,11 +1,10 @@
-
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/dashboard/models/child_model.dart';
 import 'core/data_service.dart';
 import 'core/audio_service.dart';
+import 'core/app_theme.dart'; // Import AppTheme
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,10 +20,12 @@ void main() async {
 class AppState extends ChangeNotifier {
   List<Child> _children = [];
   Child? _selectedChild;
+  ThemeMode _themeMode = ThemeMode.light; // Default to light
   final DataService _dataService = DataService();
 
   List<Child> get children => _children;
   Child? get selectedChild => _selectedChild;
+  ThemeMode get themeMode => _themeMode; // Getter
 
   AppState() {
     _loadInitialData();
@@ -32,6 +33,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadInitialData() async {
     _children = await _dataService.loadChildren();
+    notifyListeners();
+  }
+  
+  void toggleTheme(bool isDark) {
+    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
   }
 
@@ -78,18 +84,14 @@ class BrightKidsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>(); // Listen to state changes
+
     return MaterialApp(
       title: 'BrightKids',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4D96FF),
-          primary: const Color(0xFF4D96FF),
-          secondary: const Color(0xFFFF6B6B),
-        ),
-        textTheme: GoogleFonts.quicksandTextTheme(),
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: appState.themeMode,
       home: const SplashScreen(),
     );
   }
