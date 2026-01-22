@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../features/dashboard/models/child_model.dart';
 
 class DataService {
-  static const String _key = 'brightkids_data';
+  static const String _key = 'fidelkids_data';
 
   Future<void> saveChildren(List<Child> children) async {
     final prefs = await SharedPreferences.getInstance();

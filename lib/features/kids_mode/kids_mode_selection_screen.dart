@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../main.dart';
@@ -7,14 +7,14 @@ import '../learning/learning_mode_screen.dart';
 import '../../core/audio_service.dart';
 import '../dashboard/models/child_model.dart';
 
-class KidsModeSelectionScreen extends StatefulWidget {
+class KidsModeSelectionScreen extends ConsumerStatefulWidget {
   const KidsModeSelectionScreen({super.key});
 
   @override
-  State<KidsModeSelectionScreen> createState() => _KidsModeSelectionScreenState();
+  ConsumerState<KidsModeSelectionScreen> createState() => _KidsModeSelectionScreenState();
 }
 
-class _KidsModeSelectionScreenState extends State<KidsModeSelectionScreen> {
+class _KidsModeSelectionScreenState extends ConsumerState<KidsModeSelectionScreen> {
   int _selectedModeIndex = 0;
   bool _voiceAssistance = true;
   double _difficulty = 1.0;
@@ -28,14 +28,19 @@ class _KidsModeSelectionScreenState extends State<KidsModeSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
+    final state = ref.watch(appStateProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     // Ensure we have a selected child, default to first if available
     Child? selectedChild = state.selectedChild;
     if (selectedChild == null && state.children.isNotEmpty) {
-      // Defer state update to next frame to avoid build error, or just use local var for display
+      // Auto-select the first child if none is selected
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && ref.read(appStateProvider).selectedChild == null) {
+          ref.read(appStateProvider.notifier).selectChild(state.children.first);
+        }
+      });
       selectedChild = state.children.first;
     }
 
@@ -87,7 +92,7 @@ class _KidsModeSelectionScreenState extends State<KidsModeSelectionScreen> {
 
                         return GestureDetector(
                           onTap: () {
-                            state.selectChild(child);
+                            ref.read(appStateProvider.notifier).selectChild(child);
                             audioService.playClick();
                           },
                           child: Container(
@@ -288,12 +293,38 @@ class _KidsModeSelectionScreenState extends State<KidsModeSelectionScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton.icon(
-                onPressed: () {
+                onPressed: (state.children.isEmpty) ? null : () {
                   audioService.playClick();
-                  // Passing selected mode via constructor or arguments if simpler
+                  
+                  // Use selected child or default to first child
+                  final childToUse = selectedChild ?? state.children.first;
+                  
+                  // Map mode label to mode string
+                  String modeString;
+                  switch (_modes[_selectedModeIndex]['label']) {
+                    case 'English':
+                      modeString = 'ENGLISH';
+                      break;
+                    case 'Amharic':
+                      modeString = 'AMHARIC';
+                      break;
+                    case 'Numbers':
+                      modeString = 'NUMBERS';
+                      break;
+                    case 'Random':
+                    default:
+                      modeString = 'RANDOM';
+                      break;
+                  }
+                  
                   Navigator.push(
                     context, 
-                    MaterialPageRoute(builder: (context) => const LearningModeScreen())
+                    MaterialPageRoute(
+                      builder: (context) => LearningModeScreen(
+                        mode: modeString,
+                        child: childToUse,
+                      )
+                    )
                   );
                 },
                 style: ElevatedButton.styleFrom(

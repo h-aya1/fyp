@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import '../../main.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _voiceAssistantEnabled = true; // Represented by volume for now
   double _volume = 0.75;
   bool _cameraAccess = true;
@@ -21,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = ref.watch(appStateProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -83,8 +84,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: LucideIcons.moon,
             title: 'Dark Mode',
             subtitle: 'Enable dark theme for easier viewing at night.',
-            value: context.watch<AppState>().themeMode == ThemeMode.dark,
-            onChanged: (val) => context.read<AppState>().toggleTheme(val),
+            value: appState.themeMode == ThemeMode.dark,
+            onChanged: (val) => ref.read(appStateProvider.notifier).toggleTheme(val),
             theme: theme,
           ),
           _buildSettingsTile(

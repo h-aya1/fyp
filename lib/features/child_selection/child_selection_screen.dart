@@ -1,13 +1,12 @@
-
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../main.dart';
-import '../learning/learning_mode_screen.dart';
+import '../kids_mode/kids_mode_selection_screen.dart';
 import '../../core/audio_service.dart';
 import '../dashboard/models/child_model.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
-class ChildSelectionScreen extends StatelessWidget {
+class ChildSelectionScreen extends ConsumerWidget {
   const ChildSelectionScreen({super.key});
 
   String _calculateAccuracy(Child child) {
@@ -15,16 +14,16 @@ class ChildSelectionScreen extends StatelessWidget {
     int totalAttempts = 0;
     int totalSuccesses = 0;
     for (var m in child.mastery) {
-      totalAttempts += m.attempts;
-      totalSuccesses += m.successes;
+      totalAttempts += m.attempts.toInt();
+      totalSuccesses += m.successes.toInt();
     }
     if (totalAttempts == 0) return '0%';
     return '${((totalSuccesses / totalAttempts) * 100).toStringAsFixed(0)}%';
   }
 
   @override
-  Widget build(BuildContext context) {
-    final child = context.watch<AppState>().selectedChild;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final child = ref.watch(appStateProvider).selectedChild;
     if (child == null) return const Scaffold();
 
     return Scaffold(
@@ -68,7 +67,7 @@ class ChildSelectionScreen extends StatelessWidget {
                   audioService.playClick();
                   Navigator.push(
                     context, 
-                    MaterialPageRoute(builder: (context) => const LearningModeScreen())
+                    MaterialPageRoute(builder: (context) => const KidsModeSelectionScreen())
                   );
                 },
                 style: ElevatedButton.styleFrom(

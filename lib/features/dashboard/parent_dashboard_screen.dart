@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../main.dart';
 import '../child_selection/child_selection_screen.dart';
 import 'child_performance_screen.dart'; 
-import 'parent_home_screen.dart'; // Import to switch tabs
+import 'parent_home_screen.dart'; 
 import '../../core/audio_service.dart';
+import 'models/child_model.dart';
 
-class ParentDashboardScreen extends StatelessWidget {
+class ParentDashboardScreen extends ConsumerWidget {
   const ParentDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(appStateProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -108,7 +109,7 @@ class ParentDashboardScreen extends StatelessWidget {
               
               // Children List Component
               state.children.isEmpty 
-               ? _buildEmptyChildrenState(context)
+               ? _buildEmptyChildrenState(context, ref)
                : SizedBox(
                   height: 240, // Increased height to prevent overflow
                   child: ListView.builder(
@@ -210,11 +211,11 @@ class ParentDashboardScreen extends StatelessWidget {
                               SizedBox(
                                 width: double.infinity,
                                 child: OutlinedButton(
-                                  onPressed: () {
-                                     audioService.playClick();
-                                     state.selectChild(child);
-                                     Navigator.push(context, MaterialPageRoute(builder: (context) => ChildPerformanceScreen(child: child)));
-                                  },
+                                     onPressed: () {
+                                       audioService.playClick();
+                                       ref.read(appStateProvider.notifier).selectChild(child);
+                                       Navigator.push(context, MaterialPageRoute(builder: (context) => ChildPerformanceScreen(child: child)));
+                                    },
                                   style: OutlinedButton.styleFrom(
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     side: BorderSide(color: theme.dividerColor),
@@ -301,7 +302,7 @@ class ParentDashboardScreen extends StatelessWidget {
                     label: 'Add Child',
                     color: theme.dividerColor, 
                     textColor: colorScheme.onSurface,
-                    onTap: () => _showAddDialog(context),
+                    onTap: () => _showAddDialog(context, ref),
                   ),
                   _buildActionCard(
                     icon: LucideIcons.fileText,
@@ -327,7 +328,7 @@ class ParentDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyChildrenState(BuildContext context) {
+  Widget _buildEmptyChildrenState(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return Container(
       width: double.infinity,
@@ -346,7 +347,7 @@ class ParentDashboardScreen extends StatelessWidget {
             style: GoogleFonts.poppins(color: theme.textTheme.bodyMedium?.color),
           ),
           TextButton(
-            onPressed: () => _showAddDialog(context),
+            onPressed: () => _showAddDialog(context, ref),
             child: const Text("Add a child"),
           )
         ],
@@ -387,7 +388,7 @@ class ParentDashboardScreen extends StatelessWidget {
     );
   }
 
-  void _showAddDialog(BuildContext context) {
+  void _showAddDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
     showDialog(
       context: context,
@@ -402,7 +403,7 @@ class ParentDashboardScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               if (controller.text.isNotEmpty) {
-                context.read<AppState>().addChild(controller.text);
+                ref.read(appStateProvider.notifier).addChild(controller.text);
                 Navigator.pop(context);
               }
             },

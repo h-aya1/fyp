@@ -13,7 +13,7 @@ import 'package:fyp/main.dart';
 void main() {
   testWidgets('App launch smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const BrightKidsApp());
+    await tester.pumpWidget(const FidelKidsApp());
 
     // Verify that the splash screen appears.
     expect(find.byType(MaterialApp), findsOneWidget);

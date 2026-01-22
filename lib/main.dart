@@ -1,44 +1,75 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/dashboard/models/child_model.dart';
 import 'core/data_service.dart';
 import 'core/audio_service.dart';
-import 'core/app_theme.dart'; // Import AppTheme
+import 'core/app_theme.dart';
+import 'dart:async';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await audioService.init();
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => AppState(),
-      child: const BrightKidsApp(),
-    ),
-  );
+
+  // Initialize audio service
+  await _initializeServices();
+
+  runApp(const ProviderScope(child: FidelKidsApp()));
 }
 
-class AppState extends ChangeNotifier {
-  List<Child> _children = [];
-  Child? _selectedChild;
-  ThemeMode _themeMode = ThemeMode.light; // Default to light
+Future<void> _initializeServices() async {
+  try {
+    await audioService.init();
+    debugPrint("🔥 Services initialized");
+  } catch (e) {
+    debugPrint("⚠️ Initialization error: $e");
+  }
+}
+
+/// ---------- RIVERPOD STATE ----------
+
+final appStateProvider =
+    StateNotifierProvider<AppStateController, AppState>((ref) {
+  return AppStateController();
+});
+
+class AppState {
+  final List<Child> children;
+  final Child? selectedChild;
+  final ThemeMode themeMode;
+
+  AppState({
+    required this.children,
+    this.selectedChild,
+    this.themeMode = ThemeMode.light,
+  });
+
+  AppState copyWith({
+    List<Child>? children,
+    Child? selectedChild,
+    ThemeMode? themeMode,
+  }) {
+    return AppState(
+      children: children ?? this.children,
+      selectedChild: selectedChild ?? this.selectedChild,
+      themeMode: themeMode ?? this.themeMode,
+    );
+  }
+}
+
+class AppStateController extends StateNotifier<AppState> {
   final DataService _dataService = DataService();
 
-  List<Child> get children => _children;
-  Child? get selectedChild => _selectedChild;
-  ThemeMode get themeMode => _themeMode; // Getter
-
-  AppState() {
+  AppStateController() : super(AppState(children: [])) {
     _loadInitialData();
   }
 
   Future<void> _loadInitialData() async {
-    _children = await _dataService.loadChildren();
-    notifyListeners();
+    final children = await _dataService.loadChildren();
+    state = state.copyWith(children: children);
   }
-  
+
   void toggleTheme(bool isDark) {
-    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
+    state = state.copyWith(themeMode: isDark ? ThemeMode.dark : ThemeMode.light);
   }
 
   void addChild(String name) {
@@ -48,46 +79,52 @@ class AppState extends ChangeNotifier {
       avatar: 'https://api.dicebear.com/7.x/avataaars/png?seed=$name',
       mastery: [],
     );
-    _children.add(newChild);
-    _dataService.saveChildren(_children);
-    notifyListeners();
+
+    final updatedChildren = [...state.children, newChild];
+    _dataService.saveChildren(updatedChildren);
+
+    state = state.copyWith(children: updatedChildren);
   }
 
   void selectChild(Child child) {
-    _selectedChild = child;
-    notifyListeners();
+    state = state.copyWith(selectedChild: child);
   }
 
   void updateMastery(String char, bool success) {
-    if (_selectedChild == null) return;
-    
-    final index = _selectedChild!.mastery.indexWhere((m) => m.character == char);
+    if (state.selectedChild == null) return;
+
+    final selected = state.selectedChild!;
+    final index = selected.mastery.indexWhere((m) => m.character == char);
+
     if (index != -1) {
-      _selectedChild!.mastery[index].attempts++;
-      if (success) _selectedChild!.mastery[index].successes++;
-      _selectedChild!.mastery[index].lastAttempt = DateTime.now();
+      selected.mastery[index].attempts++;
+      if (success) selected.mastery[index].successes++;
+      selected.mastery[index].lastAttempt = DateTime.now();
     } else {
-      _selectedChild!.mastery.add(MasteryRecord(
+      selected.mastery.add(MasteryRecord(
         character: char,
         attempts: 1,
         successes: success ? 1 : 0,
         lastAttempt: DateTime.now(),
       ));
     }
-    _dataService.saveChildren(_children);
-    notifyListeners();
+
+    _dataService.saveChildren(state.children);
+    state = state.copyWith(selectedChild: selected);
   }
 }
 
-class BrightKidsApp extends StatelessWidget {
-  const BrightKidsApp({super.key});
+/// ---------- APP ----------
+
+class FidelKidsApp extends ConsumerWidget {
+  const FidelKidsApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final appState = context.watch<AppState>(); // Listen to state changes
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appState = ref.watch(appStateProvider);
 
     return MaterialApp(
-      title: 'BrightKids',
+      title: 'Fidel Kids',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
