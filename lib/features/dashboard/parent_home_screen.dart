@@ -1,79 +1,59 @@
+
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../main.dart';
 import '../kids_mode/kids_mode_selection_screen.dart';
 import '../games/games_hub_screen.dart';
 import 'parent_dashboard_screen.dart';
 import '../settings/settings_screen.dart';
+import 'widgets/custom_bottom_nav_bar.dart';
 
-// Placeholders for other screens
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const PlaceholderScreen({super.key, required this.title});
-  @override
-  Widget build(BuildContext context) => Center(child: Text(title));
-}
-
-class ParentHomeScreen extends StatefulWidget {
+class ParentHomeScreen extends ConsumerWidget {
   const ParentHomeScreen({super.key});
 
   @override
-  State<ParentHomeScreen> createState() => _ParentHomeScreenState();
-  
-  // Allow access to state for switching tabs
-  static _ParentHomeScreenState? of(BuildContext context) {
-    return context.findAncestorStateOfType<_ParentHomeScreenState>();
-  }
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appState = ref.watch(appStateProvider);
+    final theme = Theme.of(context);
 
-class _ParentHomeScreenState extends State<ParentHomeScreen> {
-  int _currentIndex = 0;
+    // List of screens corresponding to bottom nav tabs.
+    // Each screen is assigned a unique ValueKey so that AnimatedSwitcher 
+    // knows when a transition should occur.
+    final List<Widget> _screens = const [
+      ParentDashboardScreen(key: ValueKey('Dashboard')),
+      KidsModeSelectionScreen(key: ValueKey('KidsMode')),
+      GamesHubScreen(key: ValueKey('Games')),
+      SettingsScreen(key: ValueKey('Settings')),
+    ];
 
-  void switchToTab(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
-
-  final List<Widget> _screens = [
-    ParentDashboardScreen(),
-    KidsModeSelectionScreen(), // Replaced placeholder
-    const GamesHubScreen(),    // Replaced placeholder
-    SettingsScreen(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      // body handles screen transitions using AnimatedSwitcher.
+      // This provides a smooth slide + fade effect when switching between tabs.
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          // Slide animation from the right (simulating forward movement)
+          final slideAnimation = Tween<Offset>(
+            begin: const Offset(0.05, 0.0),
+            end: Offset.zero,
+          ).animate(animation);
+
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: slideAnimation,
+              child: child,
+            ),
+          );
+        },
+        child: _screens[appState.selectedTabIndex],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF4ADE80),
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.layoutDashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.baby),
-            label: 'Kids Mode',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.gamepad2),
-            label: 'Games',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
+      // Custom animated navigation bar built with pure Flutter widgets.
+      bottomNavigationBar: const CustomBottomNavBar(),
     );
   }
 }

@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
-import '../dashboard/parent_home_screen.dart';
+import 'package:concentric_transition/concentric_transition.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../auth/login_screen.dart';
 import '../../core/audio_service.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -12,170 +12,115 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _controller = PageController();
-  int _currentPage = 0;
-
-  final List<Map<String, dynamic>> _slides = [
-    {
-      'emoji': '📚',
-      'title': 'Learn & Play',
-      'desc': 'A fun way to master letters and numbers with interactive lessons.'
-    },
-    {
-      'emoji': '📸',
-      'title': 'AI Recognition',
-      'desc': 'Just show your work to the camera! Our AI will help you learn.'
-    },
-     {
-      'emoji': '🚀',
-      'title': 'Track Progress',
-      'desc': 'Monitor your achievements and see how much you have grown.'
-    }
+  final List<OnboardingPageData> _pages = [
+    OnboardingPageData(
+      icon: "📚",
+      title: "Learn & Play",
+      subtitle: "Master letters and numbers through fun games!",
+      bgColor: const Color(0xFF0096C7), // Brand Primary Blue
+      textColor: Colors.white,
+    ),
+    OnboardingPageData(
+      icon: "📸",
+      title: "Snap & Solve",
+      subtitle: "Show your work to the camera for instant magic help.",
+      bgColor: const Color(0xFF48CAE3), // Brand Secondary Cyan
+      textColor: Colors.white,
+    ),
+    OnboardingPageData(
+      icon: "🚀",
+      title: "Blast Off!",
+      subtitle: "Track your progress and reach for the stars.",
+      bgColor: const Color(0xFF40E0D0), // Brand Accent Yellow
+      textColor: const Color(0xFF033E8A), // Brand Deep Blue for contrast
+    ),
   ];
 
-  void _handleNext() {
+  void _finishOnboarding() {
     audioService.playClick();
-    if (_currentPage < _slides.length - 1) {
-      _controller.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.ease,
-      );
-    } else {
-                  Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const ParentHomeScreen()),
-      );
-    }
-  }
-
-  void _handleSkip() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const ParentHomeScreen()),
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Concentric transition doesn't typically need dark mode scaffolding for the pages themselves
+    // as it covers the whole screen with its own colors. 
+    // However, we ensure the button and text styles remain vibrant.
+    
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.x, color: Colors.black87),
-            onPressed: _handleSkip,
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: PageView.builder(
-                controller: _controller,
-                onPageChanged: (i) => setState(() => _currentPage = i),
-                itemCount: _slides.length,
-                itemBuilder: (context, i) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Illustration Placeholder
-                      Container(
-                        height: 200,
-                        width: double.infinity,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          _slides[i]['emoji'],
-                          style: const TextStyle(fontSize: 80),
-                        ),
-                      ),
-                      const SizedBox(height: 48),
-                      Text(
-                        _slides[i]['title'],
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1F2937), // Dark grey
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _slides[i]['desc'],
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          height: 1.5,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            
-            // Bottom Section: Indicators + Button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 48),
+      body: ConcentricPageView(
+        colors: _pages.map((p) => p.bgColor).toList(),
+        radius: 30,
+        curve: Curves.ease,
+        nextButtonBuilder: (context) => const Icon(
+          Icons.arrow_forward_rounded,
+          size: 30,
+          color: Colors.white,
+        ),
+        itemCount: _pages.length,
+        onFinish: _finishOnboarding,
+        itemBuilder: (index) {
+          final page = _pages[index];
+          return Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Page Indicators
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _slides.length,
-                      (index) => Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _currentPage == index
-                              ? const Color(0xFF4ADE80) // Green
-                              : Colors.grey[300],
-                        ),
-                      ),
+                  // Emoji / Icon
+                  Text(
+                    page.icon,
+                    style: const TextStyle(fontSize: 120),
+                  ),
+                  const SizedBox(height: 40),
+                  
+                  // Title
+                  Text(
+                    page.title,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.fredoka(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w600,
+                      color: page.textColor,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
                   
-                  // Next Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _handleNext,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4ADE80), // Green
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        _currentPage == _slides.length - 1 ? 'Get Started' : 'Next',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                  // Subtitle
+                  Text(
+                    page.subtitle,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.comicNeue(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: page.textColor.withOpacity(0.9),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
+}
+
+class OnboardingPageData {
+  final String icon;
+  final String title;
+  final String subtitle;
+  final Color bgColor;
+  final Color textColor;
+
+  OnboardingPageData({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.bgColor,
+    required this.textColor,
+  });
 }

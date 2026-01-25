@@ -61,7 +61,7 @@ class _LearningModeScreenState extends ConsumerState<LearningModeScreen> {
 
     return Scaffold(
       // Keep light green in light mode, use theme background in dark mode
-      backgroundColor: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF0FDF4),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [

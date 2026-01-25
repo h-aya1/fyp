@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/audio_service.dart';
+import 'sequence_matrix/sequence_game_screen.dart';
+import 'phonics_bubble/phonics_bubble_screen.dart';
 
 class GamesHubScreen extends StatelessWidget {
   const GamesHubScreen({super.key});
@@ -10,73 +13,84 @@ class GamesHubScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: theme.appBarTheme.backgroundColor,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
+        centerTitle: false,
         leading: IconButton(
-           icon: Icon(LucideIcons.chevronLeft, color: theme.appBarTheme.foregroundColor),
+           icon: Icon(LucideIcons.chevronLeft, color: colorScheme.onSurface),
            onPressed: () {
-             // For tab navigation context, this might not be needed or could just go back if pushed
               if (Navigator.canPop(context)) Navigator.pop(context);
            },
         ),
         title: Text(
-          'Games Hub',
-          style: GoogleFonts.poppins(
-            color: theme.appBarTheme.foregroundColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+          'Learning Games',
+          style: GoogleFonts.fredoka(
+             color: colorScheme.onSurface,
+             fontSize: 24,
+             fontWeight: FontWeight.w600,
           ),
         ),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           int crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
-          // Dynamically adjust aspect ratio based on width to ensure content fits
-          // Smaller ratio = Taller card.
-          double childAspectRatio = constraints.maxWidth > 600 ? 0.75 : 0.55; 
+          double childAspectRatio = constraints.maxWidth > 600 ? 0.75 : 0.7; 
           
           return GridView.count(
             padding: const EdgeInsets.all(24),
             crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
+            mainAxisSpacing: 20,
+            crossAxisSpacing: 20,
             childAspectRatio: childAspectRatio, 
-            children: const [
+            children: [
               GameCard(
-                title: 'Alphabet Match-Up',
-                description: 'Match Amharic and English letters',
-                ageRange: '3-6 Yrs',
-                progress: '75%',
-                imageColor: Color(0xFF93C5FD), // Light Blue
-                badgeColor: Color(0xFF4ADE80), // Green for Badge
+                title: 'Sequence Memory',
+                description: 'Watch the pattern and repeat it!',
+                ageRange: '3-7 Yrs',
+                progress: 'New',
+                color: const Color(0xFFA78BFA), // Purple
+                imageIcon: LucideIcons.brainCircuit,
+                onPlay: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SequenceGameScreen(),
+                    ),
+                  );
+                },
+                delay: 200.ms,
               ),
               GameCard(
-                title: 'Tracing Adventure',
-                description: 'Practice tracing letters and numbers',
+                title: 'Phonics Bubble',
+                description: 'Pop bubbles to match sounds!',
                 ageRange: '4-7 Yrs',
-                progress: '90%',
-                imageColor: Color(0xFFFDE047), // Yellow
-                badgeColor: Color(0xFF4ADE80),
+                progress: 'New',
+                color: const Color(0xFF60A5FA), // Blue
+                imageIcon: LucideIcons.messageCircle,
+                onPlay: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PhonicsBubbleScreen(),
+                    ),
+                  );
+                },
+                delay: 400.ms,
               ),
-              GameCard(
-                title: 'Sound Explorer',
-                description: 'Listen and identify the sounds',
+               GameCard(
+                title: 'Letter Trace',
+                description: 'Coming Soon!',
                 ageRange: '3-5 Yrs',
-                progress: '60%',
-                imageColor: Color(0xFF86EFAC), // Green
-                badgeColor: Color(0xFF4ADE80),
-              ),
-              GameCard(
-                title: 'Word Builder',
-                description: 'Drag and drop letters to form words',
-                ageRange: '5-8 Yrs',
-                progress: '45%',
-                imageColor: Color(0xFFFDBA74), // Orange
-                badgeColor: Color(0xFF4ADE80),
+                progress: 'Locked',
+                color: isDark ? colorScheme.onSurface.withOpacity(0.2) : Colors.grey.shade400,
+                imageIcon: LucideIcons.penTool,
+                isLocked: true,
+                delay: 600.ms,
               ),
             ],
           );
@@ -91,8 +105,11 @@ class GameCard extends StatelessWidget {
   final String description;
   final String ageRange;
   final String progress;
-  final Color imageColor;
-  final Color badgeColor;
+  final Color color;
+  final IconData imageIcon;
+  final VoidCallback? onPlay;
+  final bool isLocked;
+  final Duration delay;
 
   const GameCard({
     super.key,
@@ -100,156 +117,176 @@ class GameCard extends StatelessWidget {
     required this.description,
     required this.ageRange,
     required this.progress,
-    required this.imageColor,
-    required this.badgeColor,
+    required this.color,
+    required this.imageIcon,
+    this.onPlay,
+    this.isLocked = false,
+    required this.delay,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: color.withOpacity(0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
         border: Border.all(color: theme.dividerColor),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          // Image / Illustration Area
-          Expanded(
-            flex: 3, // Reduced flex to give text more space if needed, or keep 4/5 split but strictly enforce constraints
-            child: Stack(
-              children: [
-                Container(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image Area
+              Expanded(
+                flex: 4, 
+                child: Container(
                   decoration: BoxDecoration(
-                    color: imageColor.withOpacity(0.3),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    color: isLocked ? Colors.transparent : color.withOpacity(0.15),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                   ),
                   width: double.infinity,
-                  // Placeholder for actual game image
-                  child: Icon(LucideIcons.gamepad2, size: 48, color: imageColor),
-                ),
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: badgeColor,
-                      borderRadius: BorderRadius.circular(12),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? colorScheme.surface : Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: isLocked ? [] : [
+                           BoxShadow(color: color.withOpacity(0.3), blurRadius: 10, offset: const Offset(0,4))
+                        ]
+                      ),
+                      child: Icon(imageIcon, size: 32, color: isLocked ? colorScheme.onSurface.withOpacity(0.3) : color),
                     ),
-                    child: Text(
-                      ageRange,
+                  ),
+                ),
+              ),
+              
+              // Content
+              Expanded(
+                flex: 5,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                       Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           Text(
+                             title,
+                             style: GoogleFonts.fredoka(
+                               fontWeight: FontWeight.w600,
+                               fontSize: 16,
+                               color: colorScheme.onSurface,
+                             ),
+                             maxLines: 1,
+                             overflow: TextOverflow.ellipsis,
+                           ),
+                           const SizedBox(height: 4),
+                           Text(
+                             description,
+                             style: GoogleFonts.comicNeue(
+                               fontSize: 14,
+                               color: colorScheme.onSurface.withOpacity(0.6),
+                               height: 1.2,
+                             ),
+                             maxLines: 2,
+                             overflow: TextOverflow.ellipsis,
+                           ),
+                         ],
+                       ),
+                       
+                       Row(
+                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                         children: [
+                           Container(
+                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                             decoration: BoxDecoration(
+                               color: colorScheme.surface,
+                               borderRadius: BorderRadius.circular(8),
+                               border: Border.all(color: theme.dividerColor),
+                             ),
+                             child: Text(
+                               ageRange,
+                               style: GoogleFonts.poppins(
+                                 color: colorScheme.onSurface.withOpacity(0.5),
+                                 fontSize: 10,
+                                 fontWeight: FontWeight.w600,
+                               ),
+                             ),
+                           ),
+                           
+                           if (!isLocked)
+                             GestureDetector(
+                                onTap: () {
+                                  audioService.playClick();
+                                  if (onPlay != null) onPlay!();
+                                },
+                               child: Container(
+                                 padding: const EdgeInsets.all(8),
+                                 decoration: BoxDecoration(
+                                   color: color,
+                                   shape: BoxShape.circle,
+                                   boxShadow: [
+                                     BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, offset: const Offset(0,4))
+                                   ]
+                                 ),
+                                 child: const Icon(LucideIcons.play, size: 16, color: Colors.white),
+                               ),
+                             )
+                           else
+                             Icon(LucideIcons.lock, size: 20, color: colorScheme.onSurface.withOpacity(0.3)),
+                         ],
+                       ),
+                    ],
+                  ),
+                ),
+              )
+            ],
+          ),
+          // Status Badge
+           Positioned(
+              top: 12,
+              left: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDark ? colorScheme.surface : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
+                  border: isDark ? Border.all(color: theme.dividerColor) : null,
+                ),
+                child: Row(
+                  children: [
+                     Icon(LucideIcons.star, size: 10, color: isLocked ? Colors.grey : Colors.orange),
+                     const SizedBox(width: 4),
+                     Text(
+                      progress,
                       style: GoogleFonts.poppins(
-                        color: Colors.white,
+                        color: colorScheme.onSurface,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          
-          // Content
-          Expanded(
-            flex: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min, // Try to be minimal
-                children: [
-                   Text(
-                     title,
-                     style: GoogleFonts.poppins(
-                       fontWeight: FontWeight.bold,
-                       fontSize: 14,
-                       color: colorScheme.onSurface,
-                     ),
-                     maxLines: 2,
-                     overflow: TextOverflow.ellipsis,
-                   ),
-                   const SizedBox(height: 4),
-                   Expanded( // Allow description to take available space
-                     child: Text(
-                       description,
-                       style: GoogleFonts.poppins(
-                         fontSize: 11,
-                         color: colorScheme.onSurface.withOpacity(0.6),
-                       ),
-                       maxLines: 2,
-                       overflow: TextOverflow.ellipsis,
-                     ),
-                   ),
-                   const SizedBox(height: 8),
-                   Row(
-                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                     children: [
-                       // Progress Badge
-                       Flexible( // Prevent right overflow
-                         child: Container(
-                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                           decoration: BoxDecoration(
-                             color: const Color(0xFFFFF7ED), // Keep beige for contrast with orange star? Or adapt.
-                             // Let's keep it fixed for now as it's a specific "gold/star" aesthetic
-                             borderRadius: BorderRadius.circular(8),
-                           ),
-                           child: Row(
-                             mainAxisSize: MainAxisSize.min, // Shrink wrap
-                             children: [
-                               const Icon(LucideIcons.star, size: 10, color: Colors.orange),
-                               const SizedBox(width: 4),
-                               Flexible( // Ensure text truncates if super small
-                                 child: Text(
-                                   "$progress Complete",
-                                   style: GoogleFonts.poppins(
-                                     fontSize: 9, 
-                                     fontWeight: FontWeight.w600,
-                                     color: const Color(0xFF9A3412),
-                                   ),
-                                   maxLines: 1,
-                                   overflow: TextOverflow.ellipsis,
-                                 ),
-                               ),
-                             ],
-                           ),
-                         ),
-                       ),
-                       const SizedBox(width: 8), 
-                       GestureDetector(
-                         onTap: () {
-                           audioService.playClick();
-                           // Play game logic
-                         },
-                         child: Container(
-                           padding: const EdgeInsets.all(8),
-                           decoration: const BoxDecoration(
-                             color: Color(0xFF4ADE80),
-                             shape: BoxShape.circle,
-                           ),
-                           child: const Icon(LucideIcons.play, size: 16, color: Colors.white),
-                         ),
-                       ),
-                     ],
-                   ),
-                ],
               ),
             ),
-          )
         ],
       ),
-    );
+    ).animate(delay: delay).scale(curve: Curves.easeOutBack);
   }
 }

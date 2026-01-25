@@ -11,8 +11,8 @@ class AppTheme {
   static const Color primaryGreen = Color(0xFF4ADE80); // Keeping as backup/success color
 
   // Light Mode Colors
-  static const Color lightBackground = Colors.white;
-  static const Color lightSurface = Colors.white;
+  static const Color lightBackground = Color(0xFFF0F9FF); // Soft baby blue
+  static const Color lightSurface = Colors.white;        // Pure white for card contrast
   static const Color lightTextPrimary = Color(0xFF033E8A); // Deep Blue for primary text
   static const Color lightTextSecondary = Color(0xFF64748B);
   static const Color lightBorder = Color(0xFFE2E8F0);
