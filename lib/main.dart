@@ -35,22 +35,26 @@ final appStateProvider =
 class AppState {
   final List<Child> children;
   final Child? selectedChild;
+  final int selectedTabIndex;
   final ThemeMode themeMode;
 
-  AppState({
-    required this.children,
+  AppState({ 
+    this.children = const [],
     this.selectedChild,
+    this.selectedTabIndex = 0,
     this.themeMode = ThemeMode.light,
   });
 
   AppState copyWith({
     List<Child>? children,
     Child? selectedChild,
+    int? selectedTabIndex,
     ThemeMode? themeMode,
   }) {
     return AppState(
       children: children ?? this.children,
       selectedChild: selectedChild ?? this.selectedChild,
+      selectedTabIndex: selectedTabIndex ?? this.selectedTabIndex,
       themeMode: themeMode ?? this.themeMode,
     );
   }
@@ -88,6 +92,10 @@ class AppStateController extends StateNotifier<AppState> {
 
   void selectChild(Child child) {
     state = state.copyWith(selectedChild: child);
+  }
+
+  void updateTabIndex(int index) {
+    state = state.copyWith(selectedTabIndex: index);
   }
 
   void updateMastery(String char, bool success) {

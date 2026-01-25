@@ -1,14 +1,13 @@
+
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../main.dart';
-import '../child_selection/child_selection_screen.dart';
 import 'child_performance_screen.dart'; 
 import 'parent_home_screen.dart'; 
 import '../../core/audio_service.dart';
-import 'models/child_model.dart';
 
 class ParentDashboardScreen extends ConsumerWidget {
   const ParentDashboardScreen({super.key});
@@ -18,6 +17,7 @@ class ParentDashboardScreen extends ConsumerWidget {
     final state = ref.watch(appStateProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -32,78 +32,141 @@ class ParentDashboardScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: colorScheme.primary, 
-                      borderRadius: BorderRadius.circular(12),
+                      color: isDark ? theme.cardTheme.color : Colors.white.withOpacity(0.5), 
+                      borderRadius: BorderRadius.circular(16),
+                      border: isDark ? Border.all(color: theme.dividerColor) : null,
                     ),
-                    child: const Icon(LucideIcons.bookOpen, color: Colors.white),
+                    child: Icon(LucideIcons.bookOpen, color: isDark ? colorScheme.primary : const Color(0xFF1F2937)),
                   ),
-                  const CircleAvatar(
-                    radius: 20,
-                    backgroundImage: NetworkImage('https://api.dicebear.com/7.x/avataaars/png?seed=Parent'), 
+                   Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF4ADE80), width: 3),
+                    ),
+                    child: const CircleAvatar(
+                      radius: 20,
+                      backgroundImage: NetworkImage('https://api.dicebear.com/7.x/avataaars/png?seed=Parent'), 
+                    ),
                   ),
                 ],
-              ),
+              ).animate().fadeIn().slideY(begin: -0.2, end: 0),
+              
+              const SizedBox(height: 24),
+              
+              Text(
+                'Welcome Back, Parent!',
+                style: GoogleFonts.fredoka(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1, end: 0),
+
               const SizedBox(height: 24),
 
-              // Notification Card
+              // Notification Card (Gradient)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7ED), // Keep accent bg for now, or match theme? keeping for visual consistency
-                  // Ideally this should adapt too, maybe colorScheme.surfaceVariant
+                  gradient: LinearGradient(
+                    colors: isDark 
+                      ? [theme.cardTheme.color!, theme.cardTheme.color!.withOpacity(0.8)]
+                      : [const Color(0xFFFFEDD5), const Color(0xFFFED7AA)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                  border: isDark ? Border.all(color: theme.dividerColor) : null,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(LucideIcons.bell, color: Color(0xFF9A3412), size: 20),
-                        const SizedBox(width: 8),
+                        Container(
+                           padding: const EdgeInsets.all(8),
+                           decoration: BoxDecoration(
+                             color: isDark ? colorScheme.surface.withOpacity(0.3) : Colors.white, 
+                             shape: BoxShape.circle
+                           ),
+                           child: Icon(LucideIcons.bell, color: isDark ? colorScheme.secondary : const Color(0xFF9A3412), size: 20),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'New Learning Games Available!',
+                            'New Learning Games!',
                             style: GoogleFonts.poppins(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: const Color(0xFF431407),
+                              color: isDark ? colorScheme.onSurface : const Color(0xFF7C2D12),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Explore exciting new games to make learning Amharic and English even more fun.',
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFF78350F),
-                        height: 1.5,
-                      ),
-                    ),
                     const SizedBox(height: 12),
                     Text(
-                      'Read More',
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF78350F),
+                      'Explore exciting new games to make learning Amharic and English even more fun.',
+                      style: GoogleFonts.comicNeue(
+                        color: isDark ? colorScheme.onSurface.withOpacity(0.8) : const Color(0xFF7C2D12),
+                        fontSize: 16,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? colorScheme.primary.withOpacity(0.2) : Colors.white.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: isDark ? Border.all(color: colorScheme.primary.withOpacity(0.3)) : null,
+                      ),
+                      child: Text(
+                        'Read More',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? colorScheme.primary : const Color(0xFF9A3412),
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
+              ).animate().fadeIn(delay: 400.ms).scale(),
+              
               const SizedBox(height: 32),
 
               // Your Children's Progress
-              Text(
-                "Your Children's Progress",
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                   Text(
+                    "Learner Progress",
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                   Text(
+                    "View All",
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF4ADE80),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               
@@ -111,7 +174,7 @@ class ParentDashboardScreen extends ConsumerWidget {
               state.children.isEmpty 
                ? _buildEmptyChildrenState(context, ref)
                : SizedBox(
-                  height: 240, // Increased height to prevent overflow
+                  height: 250, 
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: state.children.length,
@@ -119,20 +182,20 @@ class ParentDashboardScreen extends ConsumerWidget {
                     itemBuilder: (context, index) {
                       final child = state.children[index];
                       return Container(
-                        width: 280,
-                        margin: const EdgeInsets.only(right: 16),
-                        padding: const EdgeInsets.all(20),
+                        width: 290,
+                        margin: const EdgeInsets.only(right: 20),
+                        padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           color: theme.cardTheme.color,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: theme.dividerColor),
+                          borderRadius: BorderRadius.circular(32),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05), // Subtle shadow
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
                             ),
                           ],
+                          border: Border.all(color: theme.dividerColor),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,74 +203,75 @@ class ParentDashboardScreen extends ConsumerWidget {
                             Row(
                               children: [
                                 CircleAvatar(
-                                  radius: 24,
+                                  radius: 28,
                                   backgroundImage: NetworkImage(child.avatar),
+                                  backgroundColor: isDark ? colorScheme.surface : Colors.grey.shade200,
                                 ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      child.name,
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                        color: colorScheme.onSurface,
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        child.name,
+                                        style: GoogleFonts.fredoka(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 20,
+                                          color: colorScheme.onSurface,
+                                        ),
                                       ),
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Icon(LucideIcons.trendingUp, size: 14, color: Color(0xFFF97316)),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Score: 92%', // Placeholder
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                           color: isDark ? colorScheme.primary.withOpacity(0.1) : const Color(0xFFDCFCE7),
+                                           borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          'Score: 92%', 
                                           style: GoogleFonts.poppins(
-                                            color: const Color(0xFF3B82F6),
-                                            fontWeight: FontWeight.w600,
+                                            color: isDark ? colorScheme.primary : const Color(0xFF15803D),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
                                           ),
                                         ),
-                                      ],
-                                    )
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 )
                               ],
                             ),
-                            const SizedBox(height: 20),
-                            Row(
+                            const Spacer(),
+                            
+                            // Progress Bar
+                             Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Progress',
+                                    'Overall',
                                     style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.w600,
-                                      color: colorScheme.onSurface.withOpacity(0.7),
+                                      color: isDark ? colorScheme.onSurface.withOpacity(0.5) : Colors.grey[500],
+                                      fontSize: 12,
                                     ),
                                   ),
                                   Text(
                                     '85%',
-                                    style: GoogleFonts.poppins(color: colorScheme.onSurface.withOpacity(0.5)),
+                                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: colorScheme.onSurface),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 8),
                               ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(10),
                                 child: LinearProgressIndicator(
                                   value: 0.85,
-                                  backgroundColor: theme.dividerColor,
-                                  color: const Color(0xFF3B82F6), // Blue
-                                  minHeight: 8,
+                                  backgroundColor: isDark ? colorScheme.surface : Colors.grey[100],
+                                  color: const Color(0xFF4ADE80), 
+                                  minHeight: 10,
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Last activity: 15 mins ago',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: colorScheme.onSurface.withOpacity(0.5),
-                                ),
-                              ),
-                              const Spacer(),
+                              const SizedBox(height: 20),
+
                               SizedBox(
                                 width: double.infinity,
                                 child: OutlinedButton(
@@ -217,59 +281,29 @@ class ParentDashboardScreen extends ConsumerWidget {
                                        Navigator.push(context, MaterialPageRoute(builder: (context) => ChildPerformanceScreen(child: child)));
                                     },
                                   style: OutlinedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                     side: BorderSide(color: theme.dividerColor),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
                                   child: Text(
                                     'View Details',
                                     style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.w600,
-                                      color: colorScheme.onSurface.withOpacity(0.8),
+                                      color: colorScheme.onSurface,
                                     ),
                                   ),
                                 ),
                               ),
                           ],
                         ),
-                      );
+                      ).animate(delay: (200 * index).ms).slideX(begin: 0.2, end: 0, curve: Curves.easeOut);
                     },
                   ),
                 ),
                 
               const SizedBox(height: 32),
-              
-              // Weekly Learning Time Chart
-              Text(
-                "Weekly Learning Time",
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              Text(
-                "Total hours spent learning this week",
-                style: GoogleFonts.poppins(color: colorScheme.onSurface.withOpacity(0.5)),
-              ),
-              const SizedBox(height: 24),
-              // Simple Placeholder Chart
-              Container(
-                height: 200,
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                   color: theme.cardTheme.color,
-                   borderRadius: BorderRadius.circular(24),
-                   border: Border.all(color: theme.dividerColor),
-                ),
-                child: CustomPaint(
-                  painter: _ChartPainter(color: colorScheme.primary, gridColor: theme.dividerColor),
-                ),
-              ),
 
-              const SizedBox(height: 32),
-
-              // Quick Actions
+              // Quick Actions Grid
               Text(
                 "Quick Actions",
                 style: GoogleFonts.poppins(
@@ -285,37 +319,50 @@ class ParentDashboardScreen extends ConsumerWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 1.6, // Adjusted to prevent overflow
+                childAspectRatio: 1.5, 
                 children: [
                   _buildActionCard(
                     icon: LucideIcons.users,
                     label: 'Enter Kids Mode',
-                    color: const Color(0xFF3B82F6), // Blue
+                    startColor: const Color(0xFF60A5FA), 
+                    endColor: const Color(0xFF3B82F6),
+                    iconColor: Colors.white,
                     textColor: Colors.white,
                     onTap: () {
-                       // Navigate to kids mode tab (Index 1)
-                       ParentHomeScreen.of(context)?.switchToTab(1);
+                       ref.read(appStateProvider.notifier).updateTabIndex(1);
                     },
                   ),
                   _buildActionCard(
                     icon: LucideIcons.userPlus,
                     label: 'Add Child',
-                    color: theme.dividerColor, 
+                    startColor: isDark ? colorScheme.surface : Colors.white,
+                    endColor: isDark ? colorScheme.surface : Colors.grey.shade50,
+                    iconColor: const Color(0xFF4ADE80),
                     textColor: colorScheme.onSurface,
+                    isDark: isDark,
+                    isOutlined: true,
                     onTap: () => _showAddDialog(context, ref),
                   ),
                   _buildActionCard(
                     icon: LucideIcons.fileText,
                     label: 'View Reports',
-                    color: theme.dividerColor,
+                    startColor: isDark ? colorScheme.surface : Colors.white,
+                    endColor: isDark ? colorScheme.surface : Colors.grey.shade50,
+                    iconColor: const Color(0xFFA78BFA),
                     textColor: colorScheme.onSurface,
+                    isDark: isDark,
+                    isOutlined: true,
                     onTap: () {},
                   ),
                   _buildActionCard(
                     icon: LucideIcons.gamepad2,
                     label: 'Browse Games',
-                    color: theme.dividerColor,
+                    startColor: isDark ? colorScheme.surface : Colors.white,
+                    endColor: isDark ? colorScheme.surface : Colors.grey.shade50,
+                    iconColor: const Color(0xFFFFD93D),
                     textColor: colorScheme.onSurface,
+                    isDark: isDark,
+                    isOutlined: true,
                     onTap: () {},
                   ),
                 ],
@@ -330,6 +377,8 @@ class ParentDashboardScreen extends ConsumerWidget {
 
   Widget _buildEmptyChildrenState(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(32),
@@ -340,15 +389,32 @@ class ParentDashboardScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Icon(LucideIcons.users, size: 48, color: theme.iconTheme.color),
+          Container(
+             padding: const EdgeInsets.all(16),
+             decoration: BoxDecoration(color: theme.colorScheme.surface, shape: BoxShape.circle),
+             child: Icon(LucideIcons.users, size: 32, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+          ),
           const SizedBox(height: 16),
           Text(
-            "No children added yet",
-            style: GoogleFonts.poppins(color: theme.textTheme.bodyMedium?.color),
+            "Start the journey!",
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface),
           ),
-          TextButton(
+          const SizedBox(height: 8),
+          Text(
+            "Add your first learner to track progress.",
+            style: GoogleFonts.poppins(color: theme.colorScheme.onSurface.withOpacity(0.6)),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
             onPressed: () => _showAddDialog(context, ref),
-            child: const Text("Add a child"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4ADE80),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+            ),
+            child: const Text("Add a Child"),
           )
         ],
       ),
@@ -358,47 +424,82 @@ class ParentDashboardScreen extends ConsumerWidget {
   Widget _buildActionCard({
     required IconData icon,
     required String label,
-    required Color color,
+    required Color startColor,
+    required Color endColor,
     required Color textColor,
+    required Color iconColor,
+    bool isOutlined = false,
+    bool isDark = false,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(colors: [startColor, endColor], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(24),
+          border: isOutlined ? Border.all(color: isDark ? const Color(0xFF1E40AF) : Colors.grey.shade200) : null,
+          boxShadow: isOutlined ? [] : [
+            BoxShadow(
+              color: startColor.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: textColor, size: 28),
-            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isOutlined ? (isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50) : Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(height: 12),
             Text(
               label,
               style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w600,
                 color: textColor,
+                fontSize: 13,
               ),
             ),
           ],
         ),
       ),
-    );
+    ).animate().scale();
   }
 
   void _showAddDialog(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final controller = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Learner'),
-        content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'Name')),
+        backgroundColor: theme.cardTheme.color,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: isDark ? BorderSide(color: theme.dividerColor) : BorderSide.none),
+        title: Text('Add Learner', style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+        content: TextField(
+          controller: controller, 
+          style: TextStyle(color: theme.colorScheme.onSurface),
+          decoration: InputDecoration(
+            hintText: 'Child\'s Name',
+            hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4)),
+            filled: true,
+            fillColor: theme.colorScheme.surface,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          )
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -407,69 +508,16 @@ class ParentDashboardScreen extends ConsumerWidget {
                 Navigator.pop(context);
               }
             },
+            style: ElevatedButton.styleFrom(
+               backgroundColor: const Color(0xFF4ADE80),
+               foregroundColor: Colors.white,
+               elevation: 0,
+               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
             child: const Text('Add'),
           )
         ],
       ),
     );
   }
-}
-
-class _ChartPainter extends CustomPainter {
-  final Color color;
-  final Color gridColor;
-
-  _ChartPainter({this.color = const Color(0xFF3B82F6), this.gridColor = Colors.grey});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint linePaint = Paint()
-      ..color = color
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-
-    final Paint dotPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    // Grid lines
-    final Paint gridPaint = Paint()
-      ..color = gridColor.withOpacity(0.2)
-      ..strokeWidth = 1;
-
-    // Draw horizontal grid lines
-    for (int i = 0; i < 5; i++) {
-      double y = size.height * (i / 4);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    // Rough data points (normalized 0-1)
-    final points = [0.8, 0.6, 0.4, 0.5, 0.3, 0.1, 0.4]; 
-    final path = Path();
-    
-    // Width between points
-    final stepX = size.width / (points.length - 1);
-
-    for (int i = 0; i < points.length; i++) {
-        final x = i * stepX;
-        final y = points[i] * size.height; // Invert logic if usually bottom is 0, but top is 0 here so it works fine visually
-        
-        if (i == 0) {
-          path.moveTo(x, y);
-        } else {
-          // Bezier curve for smoothness
-          final prevX = (i - 1) * stepX;
-          final prevY = points[i - 1] * size.height;
-          final midX = (prevX + x) / 2;
-          path.cubicTo(midX, prevY, midX, y, x, y);
-        }
-        
-        canvas.drawCircle(Offset(x, y), 4, dotPaint);
-    }
-    
-    canvas.drawPath(path, linePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

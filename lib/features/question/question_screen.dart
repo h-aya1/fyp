@@ -155,7 +155,7 @@ class _QuestionScreenState extends ConsumerState<QuestionScreen> {
     final aiState = ref.watch(handwritingControllerProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Writing Time!')),
       body: Stack(
         children: [

@@ -48,6 +48,8 @@ dependencies:
   chewie: ^1.8.1
   flutter_riverpod: ^2.5.1
   http: ^1.1.0
+  concentric_transition: ^1.0.3
+  flutter_animate: ^4.5.0
 
 dev_dependencies:
   flutter_test:
