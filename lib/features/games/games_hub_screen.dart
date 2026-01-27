@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/audio_service.dart';
 import 'sequence_matrix/sequence_game_screen.dart';
 import 'phonics_bubble/phonics_bubble_screen.dart';
+import 'letter_trace/letter_trace_screen.dart';
 
 class GamesHubScreen extends StatelessWidget {
   const GamesHubScreen({super.key});
@@ -82,14 +83,15 @@ class GamesHubScreen extends StatelessWidget {
                 },
                 delay: 400.ms,
               ),
-               GameCard(
+              GameCard(
                 title: 'Letter Trace',
-                description: 'Coming Soon!',
+                description: 'Start Adventure to play!',
                 ageRange: '3-5 Yrs',
-                progress: 'Locked',
-                color: isDark ? colorScheme.onSurface.withOpacity(0.2) : Colors.grey.shade400,
+                progress: 'Coming Soon',
+                color: Colors.grey.shade400, // Greyed out
                 imageIcon: LucideIcons.penTool,
-                isLocked: true,
+                isLocked: true, // Locked
+                onPlay: null, // Disable play
                 delay: 600.ms,
               ),
             ],
