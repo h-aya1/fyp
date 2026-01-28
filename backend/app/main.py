@@ -2,22 +2,14 @@
 FastAPI backend for FidelKids Handwriting Analysis.
 Proxies Gemini AI requests from Flutter app with security and validation.
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
-import os
-from dotenv import load_dotenv
 
-from .models import (
-    HandwritingAnalysisRequest,
-    HandwritingAnalysisResponse,
-    HealthResponse
-)
-from .gemini_service import gemini_service
-
-# Load environment variables
-load_dotenv()
+from app.core.config import settings
+from app.modules.health import router as health_router
+from app.modules.handwriting import router as handwriting_router
 
 # Configure logging
 logging.basicConfig(
@@ -36,10 +28,10 @@ app = FastAPI(
 )
 
 # Configure CORS
-allowed_origins = os.getenv('ALLOWED_ORIGINS', '*').split(',')
+allowed_origins = settings.get_allowed_origins_list()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins if allowed_origins != ['*'] else ["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,59 +39,9 @@ app.add_middleware(
 
 logger.info(f"🌐 CORS enabled for origins: {allowed_origins}")
 
-
-@app.get("/", response_model=HealthResponse)
-async def root():
-    """Root endpoint - returns service info."""
-    return HealthResponse()
-
-
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Health check endpoint."""
-    logger.info("💚 Health check requested")
-    return HealthResponse()
-
-
-@app.post("/ai/handwriting/analyze", response_model=HandwritingAnalysisResponse)
-async def analyze_handwriting(request: HandwritingAnalysisRequest):
-    """
-    Analyze handwriting image using Gemini AI.
-    
-    This endpoint:
-    1. Validates the request
-    2. Sends image to Gemini for perception analysis
-    3. Returns structured JSON response
-    4. Never crashes (always returns valid response)
-    
-    The backend does NOT decide correctness - that's done by Flutter's evaluator.
-    """
-    try:
-        logger.info(f"📨 Received analysis request for character: '{request.target_char}'")
-        
-        # Call Gemini service
-        result = await gemini_service.analyze_handwriting(
-            image_base64=request.image_base64,
-            target_char=request.target_char
-        )
-        
-        # Validate response with Pydantic
-        response = HandwritingAnalysisResponse(**result)
-        
-        logger.info(f"✅ Analysis complete: {response.shape_similarity} similarity")
-        return response
-        
-    except Exception as e:
-        # Log error but don't crash - return safe fallback
-        logger.error(f"❌ Error in analyze_handwriting: {type(e).__name__}: {e}")
-        
-        # Return safe fallback response
-        return HandwritingAnalysisResponse(
-            shape_similarity="medium",
-            missing_parts=[],
-            extra_strokes=[],
-            description="Let's try again and write it a bit more clearly!"
-        )
+# Include routers
+app.include_router(health_router)
+app.include_router(handwriting_router)
 
 
 @app.exception_handler(Exception)
@@ -121,7 +63,7 @@ async def global_exception_handler(request, exc):
 if __name__ == "__main__":
     import uvicorn
     
-    port = int(os.getenv('PORT', 8000))
+    port = settings.PORT
     logger.info(f"🚀 Starting FidelKids Handwriting AI API on port {port}")
     
     uvicorn.run(

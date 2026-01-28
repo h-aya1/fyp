@@ -5,7 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/audio_service.dart';
 import 'sequence_matrix/sequence_game_screen.dart';
 import 'phonics_bubble/phonics_bubble_screen.dart';
-import 'letter_trace/letter_trace_screen.dart';
+import '../learning/letter_trace/letter_trace_screen.dart';
 
 class GamesHubScreen extends StatelessWidget {
   const GamesHubScreen({super.key});
@@ -40,7 +40,7 @@ class GamesHubScreen extends StatelessWidget {
       body: LayoutBuilder(
         builder: (context, constraints) {
           int crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
-          double childAspectRatio = constraints.maxWidth > 600 ? 0.75 : 0.7; 
+          double childAspectRatio = constraints.maxWidth > 600 ? 0.75 : 0.67; 
           
           return GridView.count(
             padding: const EdgeInsets.all(24),
@@ -85,13 +85,15 @@ class GamesHubScreen extends StatelessWidget {
               ),
               GameCard(
                 title: 'Letter Trace',
-                description: 'Start Adventure to play!',
-                ageRange: '3-5 Yrs',
+                description: 'Practice and master handwriting skills!',
+                ageRange: '3-6 Yrs',
                 progress: 'Coming Soon',
-                color: Colors.grey.shade400, // Greyed out
+                color: const Color(0xFF4ADE80), // Green
                 imageIcon: LucideIcons.penTool,
-                isLocked: true, // Locked
-                onPlay: null, // Disable play
+                isLocked: true, 
+                onPlay: () {
+                  // Game not yet ready
+                },
                 delay: 600.ms,
               ),
             ],
@@ -179,36 +181,38 @@ class GameCard extends StatelessWidget {
               Expanded(
                 flex: 5,
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                       Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Text(
-                             title,
-                             style: GoogleFonts.fredoka(
-                               fontWeight: FontWeight.w600,
-                               fontSize: 16,
-                               color: colorScheme.onSurface,
+                       Flexible(
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             Text(
+                               title,
+                               style: GoogleFonts.fredoka(
+                                 fontWeight: FontWeight.w600,
+                                 fontSize: 16,
+                                 color: colorScheme.onSurface,
+                               ),
+                               maxLines: 1,
+                               overflow: TextOverflow.ellipsis,
                              ),
-                             maxLines: 1,
-                             overflow: TextOverflow.ellipsis,
-                           ),
-                           const SizedBox(height: 4),
-                           Text(
-                             description,
-                             style: GoogleFonts.comicNeue(
-                               fontSize: 14,
-                               color: colorScheme.onSurface.withOpacity(0.6),
-                               height: 1.2,
+                             const SizedBox(height: 2),
+                             Text(
+                               description,
+                               style: GoogleFonts.comicNeue(
+                                 fontSize: 13,
+                                 color: colorScheme.onSurface.withOpacity(0.6),
+                                 height: 1.1,
+                               ),
+                               maxLines: 2,
+                               overflow: TextOverflow.ellipsis,
                              ),
-                             maxLines: 2,
-                             overflow: TextOverflow.ellipsis,
-                           ),
-                         ],
+                           ],
+                         ),
                        ),
                        
                        Row(

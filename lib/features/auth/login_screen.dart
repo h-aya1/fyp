@@ -1,10 +1,13 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../dashboard/parent_home_screen.dart';
 import '../../core/audio_service.dart';
+import '../../core/services/persistence_service.dart';
+import '../../core/services/sync_service.dart';
+import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,20 +20,137 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isAuthAvailable = false;
 
-  void _handleLogin() async {
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthAvailability();
+  }
+
+  void _checkAuthAvailability() {
+    setState(() {
+      _isAuthAvailable = SyncService().isInitialized;
+    });
+    
+    if (!_isAuthAvailable) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Authentication unavailable (Offline/Demo Mode)'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      });
+    }
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_isAuthAvailable) return;
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
     audioService.playClick();
     setState(() => _isLoading = true);
     
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 1500));
-    
-    if (mounted) {
-      setState(() => _isLoading = false);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const ParentHomeScreen()),
+    try {
+      // 1. Authenticate with Supabase
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
       );
+
+      final user = response.user;
+      if (user == null) throw 'Login failed';
+
+      // 2. Check for unclaimed children
+      if (mounted) {
+        await _checkAndClaimChildren(user.id);
+      }
+
+      // 3. Trigger manual sync (best effort)
+      SyncService().manualSync(); // Don't await, let it run in background
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const ParentHomeScreen()),
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login Failed: ${e.message}'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _checkAndClaimChildren(String userId) async {
+    final persistence = PersistenceService();
+    final unclaimedCount = await persistence.getUnclaimedChildrenCount();
+
+    if (unclaimedCount > 0 && mounted) {
+      final shouldClaim = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Found Existing Learning Progress'),
+          content: Text(
+            'We found $unclaimedCount unclaimed child profile(s) on this device. '
+            'Do you want to link them to your account?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Skip for Now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Link Profiles'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldClaim == true) {
+        // Show claiming indicator
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Linking profiles...')),
+          );
+        }
+
+        final count = await persistence.claimChildrenForParent(userId);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Successfully linked $count profile(s)!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -68,6 +188,33 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Warning Banner if Auth Unavailable
+                    if (!_isAuthAvailable)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 24),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          border: Border.all(color: Colors.orange),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(LucideIcons.alertTriangle, color: Colors.orange),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Login unavailable in offline/demo mode',
+                                style: GoogleFonts.comicNeue(
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(),
+
                     // Logo with "Pulse" and "Bounce"
                     Center(
                       child: Container(
@@ -140,6 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             icon: LucideIcons.mail,
                             delay: 600.ms,
                             theme: theme,
+                            enabled: _isAuthAvailable,
                           ),
                           const SizedBox(height: 16),
                           _buildTextField(
@@ -149,6 +297,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             isPassword: true,
                             delay: 750.ms,
                             theme: theme,
+                             enabled: _isAuthAvailable,
                           ),
                         ],
                       ),
@@ -160,11 +309,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: _isAuthAvailable ? () {} : null,
                         child: Text(
                           'Forgot password?',
                           style: GoogleFonts.comicNeue(
-                            color: const Color(0xFF16A34A), // Richer green
+                            color: _isAuthAvailable ? const Color(0xFF16A34A) : Colors.grey, // Richer green
                             fontWeight: FontWeight.w900,
                             fontSize: 16,
                           ),
@@ -186,14 +335,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             offset: const Offset(0, 8),
                           ),
                         ],
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
+                        gradient: LinearGradient(
+                          colors: _isAuthAvailable 
+                              ? [const Color(0xFF4ADE80), const Color(0xFF22C55E)]
+                              : [Colors.grey, Colors.grey.shade600],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                       ),
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleLogin,
+                        onPressed: (_isLoading || !_isAuthAvailable) ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
@@ -219,7 +370,40 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ).animate().fadeIn(delay: 1.seconds).scale(begin: const Offset(0.8, 0.8), curve: Curves.elasticOut),
                     
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+
+                    // Register Link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account? ",
+                          style: GoogleFonts.comicNeue(
+                            color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _isAuthAvailable ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const SignupScreen()),
+                            );
+                          } : null,
+                          child: Text(
+                            'Sign up',
+                            style: GoogleFonts.comicNeue(
+                              color: _isAuthAvailable ? const Color(0xFF2563EB) : Colors.grey, // Blue
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ).animate().fadeIn(delay: 1100.ms),
+
+                    const SizedBox(height: 16),
                     
                     // Social
                     Text(
@@ -237,7 +421,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(
                       height: 60,
                       child: OutlinedButton(
-                        onPressed: () {},
+                        onPressed: _isAuthAvailable ? () {} : null,
                         style: OutlinedButton.styleFrom(
                           backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.8),
                           side: BorderSide(color: isDark ? Colors.white10 : Colors.blue.withOpacity(0.1), width: 2),
@@ -251,16 +435,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             RichText(
                               text: TextSpan(
-                                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 24),
+                                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 24, color: _isAuthAvailable ? null : Colors.grey),
                                 children: [
-                                  TextSpan(text: 'G', style: TextStyle(color: Colors.blue.shade600)),
-                                  TextSpan(text: 'o', style: TextStyle(color: Colors.red.shade600)),
-                                  TextSpan(text: 'o', style: TextStyle(color: Colors.yellow.shade700)),
-                                  TextSpan(text: 'g', style: TextStyle(color: Colors.blue.shade600)),
-                                  TextSpan(text: 'l', style: TextStyle(color: Colors.green.shade600)),
-                                  TextSpan(text: 'e', style: TextStyle(color: Colors.red.shade600)),
+                                  TextSpan(text: 'G', style: TextStyle(color: _isAuthAvailable ? Colors.blue.shade600 : Colors.grey)),
+                                  TextSpan(text: 'o', style: TextStyle(color: _isAuthAvailable ? Colors.red.shade600 : Colors.grey)),
+                                  TextSpan(text: 'o', style: TextStyle(color: _isAuthAvailable ? Colors.yellow.shade700 : Colors.grey)),
+                                  TextSpan(text: 'g', style: TextStyle(color: _isAuthAvailable ? Colors.blue.shade600 : Colors.grey)),
+                                  TextSpan(text: 'l', style: TextStyle(color: _isAuthAvailable ? Colors.green.shade600 : Colors.grey)),
+                                  TextSpan(text: 'e', style: TextStyle(color: _isAuthAvailable ? Colors.red.shade600 : Colors.grey)),
                                   const TextSpan(text: '  ', style: TextStyle(fontSize: 10)),
-                                  TextSpan(text: 'Sign in', style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 18, fontWeight: FontWeight.normal)),
+                                  TextSpan(text: 'Sign in', style: TextStyle(color: _isAuthAvailable ? (isDark ? Colors.white70 : Colors.black54) : Colors.grey, fontSize: 18, fontWeight: FontWeight.normal)),
                                 ],
                               ),
                             ),
@@ -315,6 +499,7 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isPassword = false,
     required Duration delay,
     required ThemeData theme,
+    bool enabled = true,
   }) {
     final isDark = theme.brightness == Brightness.dark;
     
@@ -334,6 +519,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextField(
         controller: controller,
         obscureText: isPassword,
+        enabled: enabled,
         style: GoogleFonts.comicNeue(
           fontSize: 18, 
           fontWeight: FontWeight.w600,

@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/audio_service.dart';
 import '../../core/constants.dart';
+import '../../core/services/persistence_service.dart';
+import '../../core/models/handwriting_attempt.dart';
 import '../camera/camera_screen.dart';
 import 'controllers/handwriting_controller.dart';
 import 'widgets/writing_input_area.dart';
@@ -61,7 +63,22 @@ class _LearningModeScreenState extends ConsumerState<LearningModeScreen> {
       _sessionController.session!.registerAttempt(correct: isCorrect);
     }
     final currentChar = _sessionController.session?.targetCharacter ?? 'A';
+    
+    // Legacy Mastery Update
     ref.read(appStateProvider.notifier).updateMastery(currentChar, isCorrect);
+
+    // Persistence for Writing Mode (Camera mode is handled by HandwritingController)
+    if (_inputMode == LearningInputMode.writing) {
+       final attempt = HandwritingAttempt(
+         childId: widget.child.id,
+         targetCharacter: currentChar,
+         shapeSimilarity: isCorrect ? 'high' : 'low',
+         confidenceScore: isCorrect ? 1.0 : 0.0,
+         feedbackText: isCorrect ? 'Good job!' : 'Keep practicing!',
+       );
+       PersistenceService().saveHandwritingAttempt(attempt);
+       debugPrint('📝 Writing attempt saved locally');
+    }
   }
 
   void _advance() {
@@ -441,7 +458,11 @@ class _LearningModeScreenState extends ConsumerState<LearningModeScreen> {
           final bytes = await File(_capturedImage!.path).readAsBytes();
           final currentChar = _sessionController.session?.targetCharacter ?? 'A';
           
-          await ref.read(handwritingControllerProvider.notifier).analyze(bytes, currentChar);
+          await ref.read(handwritingControllerProvider.notifier).analyze(
+            bytes, 
+            currentChar,
+            childId: widget.child.id,
+          );
           
           final newState = ref.read(handwritingControllerProvider);
           if (newState.isCorrect != null) {

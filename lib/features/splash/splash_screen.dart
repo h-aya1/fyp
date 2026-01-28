@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import '../onboarding/onboarding_screen.dart';
 // Import the service to access providers
-import '../games/letter_trace/digital_ink_service.dart';
-import '../games/letter_trace/download_model_dialog.dart';
+import '../learning/letter_trace/digital_ink_service.dart';
+import '../learning/letter_trace/download_model_dialog.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -24,6 +24,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     super.initState();
     // Enable fullscreen/immersive mode for splash screen
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+    ));
     _initializeVideo();
   }
 
@@ -111,11 +115,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       backgroundColor: const Color(0xFFFFFFFF), // Light blue background
       body: _initialized
           ? Container(
+
               color: const Color(0xFFFFFFFF), // Ensures background matches
-              child: Center(
-                child: AspectRatio(
-                  aspectRatio: _controller.value.aspectRatio,
-                  child: VideoPlayer(_controller),
+
+
+              child: SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller.value.size.width,
+                    height: _controller.value.size.height,
+                    child: VideoPlayer(_controller),
+                  ),
                 ),
               ),
             )

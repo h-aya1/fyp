@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../games/letter_trace/digital_ink_service.dart';
-import '../../games/letter_trace/drawing_canvas.dart';
-import '../../games/letter_trace/download_model_dialog.dart';
+import '../letter_trace/digital_ink_service.dart';
+import '../letter_trace/drawing_canvas.dart';
+import '../letter_trace/download_model_dialog.dart';
 import '../../../core/audio_service.dart';
 
 class WritingInputArea extends ConsumerStatefulWidget {

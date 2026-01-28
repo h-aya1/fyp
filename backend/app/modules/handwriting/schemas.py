@@ -1,6 +1,6 @@
 """
-Pydantic models for request/response validation.
-Ensures type safety and automatic validation for all API endpoints.
+Pydantic models for handwriting analysis request/response validation.
+Ensures type safety and automatic validation for handwriting endpoints.
 """
 from typing import List, Literal
 from pydantic import BaseModel, Field, validator
@@ -56,11 +56,3 @@ class HandwritingAnalysisResponse(BaseModel):
         if not v or not v.strip():
             return "Let's try again and write it a bit more clearly!"
         return v.strip()
-
-
-class HealthResponse(BaseModel):
-    """Response model for health check endpoint."""
-    
-    status: str = "healthy"
-    service: str = "FidelKids Handwriting AI"
-    version: str = "1.0.0"

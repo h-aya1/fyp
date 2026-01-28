@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'models/child_model.dart'; // Make sure this path is correct based on folder structure
+import 'package:intl/intl.dart';
+import 'models/child_model.dart';
+import '../../core/services/persistence_service.dart';
+import '../../core/models/handwriting_attempt.dart';
 
-class ChildPerformanceScreen extends StatelessWidget {
+class ChildPerformanceScreen extends StatefulWidget {
   final Child child;
   const ChildPerformanceScreen({super.key, required this.child});
+
+  @override
+  State<ChildPerformanceScreen> createState() => _ChildPerformanceScreenState();
+}
+
+class _ChildPerformanceScreenState extends State<ChildPerformanceScreen> {
+  final PersistenceService _persistence = PersistenceService();
+  late Future<List<HandwritingAttempt>> _attemptsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _loadData() {
+    _attemptsFuture = _persistence.getAttemptsForChild(widget.child.id);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +43,7 @@ class ChildPerformanceScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "${child.name}'s Performance",
+          "${widget.child.name}'s Performance",
           style: GoogleFonts.poppins(
             color: theme.appBarTheme.foregroundColor,
             fontWeight: FontWeight.bold,
@@ -31,130 +52,170 @@ class ChildPerformanceScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: Icon(LucideIcons.share2, color: theme.appBarTheme.foregroundColor),
-            onPressed: () {},
+            icon: Icon(LucideIcons.refreshCw, color: theme.appBarTheme.foregroundColor),
+            onPressed: () {
+              setState(() {
+                _loadData();
+              });
+            },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Period Filters
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+      body: FutureBuilder<List<HandwritingAttempt>>(
+        future: _attemptsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final attempts = snapshot.data ?? [];
+          
+          if (attempts.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildFilterChip(context, 'Last 7 Days', true),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(context, 'Last 30 Days', false),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(context, 'All Time', false),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(context, 'Custom', false),
+                   Icon(LucideIcons.clipboardList, size: 64, color: theme.dividerColor),
+                   const SizedBox(height: 16),
+                   Text(
+                     "No learning activity yet",
+                     style: GoogleFonts.poppins(
+                       fontSize: 18, 
+                       color: colorScheme.onSurface.withOpacity(0.6)
+                     ),
+                   ),
+                   const SizedBox(height: 8),
+                   Text(
+                     "Encourage ${widget.child.name} to start learning!",
+                     style: GoogleFonts.poppins(
+                       fontSize: 14, 
+                       color: colorScheme.onSurface.withOpacity(0.4)
+                     ),
+                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 32),
+            );
+          }
 
-            // Performance Overview
-            Text(
-              'Performance Overview for ${child.name}',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            _buildPerformanceCard(
-              context: context,
-              title: "English Alphabet",
-              accuracy: "85%",
-              sessions: "25",
-              time: "5h 10m",
-              color: Colors.green,
-              icon: LucideIcons.bookOpen,
-              progress: 0.85,
-            ),
-            const SizedBox(height: 16),
-            _buildPerformanceCard(
-              context: context,
-              title: "Amharic Alphabet",
-              accuracy: "78%",
-              sessions: "18",
-              time: "3h 45m",
-              color: Colors.amber,
-              icon: LucideIcons.book,
-              progress: 0.78,
-            ),
-             const SizedBox(height: 16),
-            _buildPerformanceCard(
-              context: context,
-              title: "Numbers",
-              accuracy: "92%",
-              sessions: "30",
-              time: "6h 20m",
-              color: Colors.blue,
-              icon: LucideIcons.calculator, // or Hash
-              progress: 0.92,
-            ),
+          // Process Data
+          final stats = _calculateStats(attempts);
+          final recentSessions = attempts.take(5).toList(); // Last 5 attempts
 
-            const SizedBox(height: 32),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Period Filters
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip(context, 'All Time', true),
+                      // Placeholder filters for now
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
 
-            // Recent Learning Sessions
-            Text(
-              'Recent Learning Sessions',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
+                // Performance Overview
+                Text(
+                  'Performance Overview',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Dynamically build cards based on available data categories
+                if (stats.containsKey('English Alphabet'))
+                  _buildPerformanceCard(
+                    context: context,
+                    title: "English Alphabet",
+                    stats: stats['English Alphabet']!,
+                    color: Colors.green,
+                    icon: LucideIcons.bookOpen,
+                  ),
+                if (stats.containsKey('Numbers')) ...[
+                  const SizedBox(height: 16),
+                  _buildPerformanceCard(
+                    context: context,
+                    title: "Numbers",
+                    stats: stats['Numbers']!,
+                    color: Colors.blue,
+                    icon: LucideIcons.calculator,
+                  ),
+                ],
+                if (stats.containsKey('Other')) ...[
+                   const SizedBox(height: 16),
+                   _buildPerformanceCard(
+                    context: context,
+                    title: "Other Symbols",
+                    stats: stats['Other']!,
+                    color: Colors.amber,
+                    icon: LucideIcons.shapes,
+                  ),
+                ],
+
+                const SizedBox(height: 32),
+
+                // Recent Activity
+                Text(
+                  'Recent Activity',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                ...recentSessions.map((attempt) {
+                  return Column(
+                    children: [
+                      _buildSessionRow(context, attempt),
+                      Divider(height: 32, color: theme.dividerColor),
+                    ],
+                  );
+                }),
+              ],
             ),
-            const SizedBox(height: 16),
-            _buildSessionRow(context, "English Alphabet", "Oct 26, 2023", "20 min", "95%", "Excellent", Colors.green),
-            Divider(height: 32, color: theme.dividerColor),
-            _buildSessionRow(context, "Amharic Alphabet", "Oct 25, 2023", "15 min", "80%", "Good", Colors.amber),
-            Divider(height: 32, color: theme.dividerColor),
-            _buildSessionRow(context, "Numbers", "Oct 24, 2023", "25 min", "88%", "Great", Colors.orange),
-
-             const SizedBox(height: 32),
-
-            // Timeline
-            Text(
-              'Learning Journey Timeline',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _buildTimelineItem(context, "Oct 2023", "Mastered numbers 1-10.", Colors.green, true),
-            _buildTimelineItem(context, "Sep 2023", "Recognizing all English letters.", Colors.amber, true),
-            _buildTimelineItem(context, "Aug 2023", "Started Amharic letters.", Colors.blue, false),
-
-             const SizedBox(height: 32),
-
-             // Suggestions
-            Text(
-              'Personalized Learning Suggestions',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildSuggestionItem(context, "Focus on 'Amharic Alphabet' for 15 minutes daily to improve recognition."),
-            _buildSuggestionItem(context, "Practice writing numbers 11-20 with the camera feature."),
-            _buildSuggestionItem(context, "Revisit English consonant sounds through interactive games."),
-          ],
-        ),
+          );
+        },
       ),
     );
+  }
+
+  Map<String, CategoryStats> _calculateStats(List<HandwritingAttempt> attempts) {
+    final Map<String, CategoryStats> categories = {};
+
+    for (var attempt in attempts) {
+      String category = _getCategory(attempt.targetCharacter);
+      
+      if (!categories.containsKey(category)) {
+        categories[category] = CategoryStats();
+      }
+      
+      categories[category]!.addAttempt(attempt);
+    }
+    
+    return categories;
+  }
+
+  String _getCategory(String char) {
+    if (RegExp(r'[a-zA-Z]').hasMatch(char)) {
+      return 'English Alphabet';
+    }
+    if (RegExp(r'[0-9]').hasMatch(char)) {
+      return 'Numbers';
+    }
+    return 'Other';
   }
 
   Widget _buildFilterChip(BuildContext context, String label, bool isSelected) {
@@ -179,15 +240,13 @@ class ChildPerformanceScreen extends StatelessWidget {
   Widget _buildPerformanceCard({
     required BuildContext context,
     required String title,
-    required String accuracy,
-    required String sessions,
-    required String time,
+    required CategoryStats stats,
     required Color color,
     required IconData icon,
-    required double progress,
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final accuracyStr = "${(stats.accuracy * 100).toInt()}%";
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -226,9 +285,9 @@ class ChildPerformanceScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildMiniStat(context, "Accuracy", accuracy),
-                        _buildMiniStat(context, "Session", sessions),
-                        _buildMiniStat(context, "Time", time),
+                        _buildMiniStat(context, "Accuracy", accuracyStr),
+                        _buildMiniStat(context, "Attempts", "${stats.totalAttempts}"),
+                        _buildMiniStat(context, "Best", stats.bestChar),
                       ],
                     ),
                   ],
@@ -240,7 +299,7 @@ class ChildPerformanceScreen extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: progress,
+              value: stats.accuracy,
               color: color,
               backgroundColor: theme.dividerColor,
               minHeight: 6,
@@ -276,10 +335,19 @@ class ChildPerformanceScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSessionRow(BuildContext context, String subject, String date, String duration, String percent, String badge, Color color) {
+  Widget _buildSessionRow(BuildContext context, HandwritingAttempt attempt) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final dateStr = DateFormat('MMM d, h:mm a').format(attempt.createdAt);
     
+    // Determine color based on score
+    Color scoreColor = Colors.red;
+    if (attempt.shapeSimilarity == 'high') {
+      scoreColor = Colors.green;
+    } else if (attempt.shapeSimilarity == 'medium') {
+      scoreColor = Colors.amber;
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -288,7 +356,7 @@ class ChildPerformanceScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "$subject - $date", // Simplified combining title and date for now in prompt style
+                "Practiced '${attempt.targetCharacter}'", 
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
@@ -297,7 +365,7 @@ class ChildPerformanceScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                duration,
+                dateStr,
                 style: GoogleFonts.poppins(
                    fontSize: 13,
                    color: colorScheme.onSurface.withOpacity(0.5),
@@ -310,103 +378,36 @@ class ChildPerformanceScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              percent,
+              attempt.shapeSimilarity.toUpperCase(),
               style: GoogleFonts.poppins(
                 fontWeight: FontWeight.bold,
-                color: color,
+                fontSize: 12,
+                color: scoreColor,
               ),
             ),
             const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                badge,
-                style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ),
+            // Optional: Show confidence score bar or similar
           ],
         )
       ],
     );
   }
+}
 
-  Widget _buildTimelineItem(BuildContext context, String date, String desc, Color color, bool showLine) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+class CategoryStats {
+  int totalAttempts = 0;
+  int successfulAttempts = 0;
+  String bestChar = '-'; // Character with highest success rate (simplified for now)
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Icon(LucideIcons.trendingUp, color: color, size: 20), // Icon somewhat matches
-            if (showLine)
-              Container(
-                width: 2,
-                height: 40,
-                color: theme.dividerColor,
-                margin: const EdgeInsets.symmetric(vertical: 4),
-              ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                 Text(
-                   date,
-                   style: GoogleFonts.poppins(
-                     fontSize: 12,
-                     color: colorScheme.onSurface.withOpacity(0.5),
-                   ),
-                 ),
-                 const SizedBox(height: 4),
-                 Text(
-                   desc,
-                   style: GoogleFonts.poppins(
-                     fontSize: 14,
-                     color: colorScheme.onSurface,
-                   ),
-                 ),
-                 const SizedBox(height: 16), // Spacer for next item
-              ],
-            ),
-        ),
-      ],
-    );
+  // Map to track success per char to find 'best'
+  // Map<String, int> charSuccesses = {};
+
+  void addAttempt(HandwritingAttempt attempt) {
+    totalAttempts++;
+    if (attempt.shapeSimilarity == 'high' || attempt.shapeSimilarity == 'medium') {
+      successfulAttempts++;
+    }
   }
 
-  Widget _buildSuggestionItem(BuildContext context, String text) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(LucideIcons.lightbulb, color: Colors.amber, size: 20),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.poppins(
-                color: colorScheme.onSurface.withOpacity(0.7),
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  double get accuracy => totalAttempts == 0 ? 0 : successfulAttempts / totalAttempts;
 }

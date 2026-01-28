@@ -8,6 +8,8 @@ import '../../main.dart';
 import 'child_performance_screen.dart'; 
 import 'parent_home_screen.dart'; 
 import '../../core/audio_service.dart';
+import '../../core/services/persistence_service.dart';
+import '../../core/models/handwriting_attempt.dart';
 
 class ParentDashboardScreen extends ConsumerWidget {
   const ParentDashboardScreen({super.key});
@@ -181,121 +183,11 @@ class ParentDashboardScreen extends ConsumerWidget {
                     clipBehavior: Clip.none,
                     itemBuilder: (context, index) {
                       final child = state.children[index];
-                      return Container(
-                        width: 290,
-                        margin: const EdgeInsets.only(right: 20),
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: theme.cardTheme.color,
-                          borderRadius: BorderRadius.circular(32),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 28,
-                                  backgroundImage: NetworkImage(child.avatar),
-                                  backgroundColor: isDark ? colorScheme.surface : Colors.grey.shade200,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        child.name,
-                                        style: GoogleFonts.fredoka(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 20,
-                                          color: colorScheme.onSurface,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                           color: isDark ? colorScheme.primary.withOpacity(0.1) : const Color(0xFFDCFCE7),
-                                           borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          'Score: 92%', 
-                                          style: GoogleFonts.poppins(
-                                            color: isDark ? colorScheme.primary : const Color(0xFF15803D),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              ],
-                            ),
-                            const Spacer(),
-                            
-                            // Progress Bar
-                             Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Overall',
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? colorScheme.onSurface.withOpacity(0.5) : Colors.grey[500],
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  Text(
-                                    '85%',
-                                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: colorScheme.onSurface),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: LinearProgressIndicator(
-                                  value: 0.85,
-                                  backgroundColor: isDark ? colorScheme.surface : Colors.grey[100],
-                                  color: const Color(0xFF4ADE80), 
-                                  minHeight: 10,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton(
-                                     onPressed: () {
-                                       audioService.playClick();
-                                       ref.read(appStateProvider.notifier).selectChild(child);
-                                       Navigator.push(context, MaterialPageRoute(builder: (context) => ChildPerformanceScreen(child: child)));
-                                    },
-                                  style: OutlinedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    side: BorderSide(color: theme.dividerColor),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                  ),
-                                  child: Text(
-                                    'View Details',
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+                      return _ChildProgressCard(
+                        child: child, 
+                        isDark: isDark, 
+                        theme: theme,
+                        colorScheme: colorScheme,
                       ).animate(delay: (200 * index).ms).slideX(begin: 0.2, end: 0, curve: Curves.easeOut);
                     },
                   ),
@@ -516,6 +408,197 @@ class ParentDashboardScreen extends ConsumerWidget {
             ),
             child: const Text('Add'),
           )
+        ],
+      ),
+    );
+  }
+}
+
+class _ChildProgressCard extends StatefulWidget {
+  final dynamic child; // Using dynamic because of import issues, strictly it's Child using main.dart import logic
+  final bool isDark;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _ChildProgressCard({
+    required this.child,
+    required this.isDark,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  State<_ChildProgressCard> createState() => _ChildProgressCardState();
+}
+
+class _ChildProgressCardState extends State<_ChildProgressCard> {
+  double _accuracy = 0.0;
+  double _progress = 0.0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final attempts = await PersistenceService().getAttemptsForChild(widget.child.id);
+      
+      if (attempts.isEmpty) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      int successful = attempts.where((a) => a.shapeSimilarity == 'high' || a.shapeSimilarity == 'medium').length;
+      double accuracy = (successful / attempts.length) * 100;
+
+      // Unique correct characters / 52 (A-Z + a-z)
+      Set<String> mastered = attempts
+          .where((a) => a.shapeSimilarity == 'high' || a.shapeSimilarity == 'medium')
+          .map((a) => a.targetCharacter)
+          .toSet();
+      
+      double progress = (mastered.length / 52) * 100;
+      if (progress > 100) progress = 100;
+
+      if (mounted) {
+        setState(() {
+          _accuracy = accuracy;
+          _progress = progress;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading child stats: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 290,
+      margin: const EdgeInsets.only(right: 20),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: widget.theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(color: widget.theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundImage: NetworkImage(widget.child.avatar),
+                backgroundColor: widget.isDark ? widget.colorScheme.surface : Colors.grey.shade200,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.child.name,
+                      style: GoogleFonts.fredoka(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        color: widget.colorScheme.onSurface,
+                      ),
+                    ),
+                    _isLoading 
+                    ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                         color: widget.isDark ? widget.colorScheme.primary.withOpacity(0.1) : const Color(0xFFDCFCE7),
+                         borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Score: ${_accuracy.toStringAsFixed(0)}%', 
+                        style: GoogleFonts.poppins(
+                          color: widget.isDark ? widget.colorScheme.primary : const Color(0xFF15803D),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
+          const Spacer(),
+          
+          // Progress Bar
+           Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Overall',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    color: widget.isDark ? widget.colorScheme.onSurface.withOpacity(0.5) : Colors.grey[500],
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  _isLoading ? '...' : '${_progress.toStringAsFixed(0)}%',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: widget.colorScheme.onSurface),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: _isLoading 
+              ? LinearProgressIndicator(color: const Color(0xFF4ADE80))
+              : LinearProgressIndicator(
+                value: _progress / 100,
+                backgroundColor: widget.isDark ? widget.colorScheme.surface : Colors.grey[100],
+                color: const Color(0xFF4ADE80), 
+                minHeight: 10,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            Consumer(
+              builder: (context, ref, child) {
+                return SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                       onPressed: () {
+                         audioService.playClick();
+                         ref.read(appStateProvider.notifier).selectChild(widget.child);
+                         Navigator.push(context, MaterialPageRoute(builder: (context) => ChildPerformanceScreen(child: widget.child)));
+                      },
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      side: BorderSide(color: widget.theme.dividerColor),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      'View Details',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        color: widget.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                );
+              }
+            ),
         ],
       ),
     );

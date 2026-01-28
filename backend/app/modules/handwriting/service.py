@@ -1,29 +1,27 @@
 """
-Gemini AI service wrapper using the new google-genai SDK.
+Handwriting analysis service using Gemini AI.
 Strict JSON output, timeout handling, and fallback responses.
 """
-import os
 import json
 import base64
 import asyncio
+import time
+import uuid
 from typing import Dict, Any, Optional
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import logging
 
-# Load environment variables
-load_dotenv()
+from app.core.config import settings
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class GeminiService:
+class HandwritingService:
     """Singleton service for Gemini AI handwriting analysis."""
     
-    _instance: Optional['GeminiService'] = None
+    _instance: Optional['HandwritingService'] = None
     _client: Optional[genai.Client] = None
     
     # Strict prompt for JSON-only output
@@ -74,7 +72,7 @@ Return ONLY the JSON object."""
     
     def _initialize_client(self):
         """Initialize the Gemini client with configuration."""
-        api_key = os.getenv('GEMINI_API_KEY')
+        api_key = settings.GEMINI_API_KEY
         
         if not api_key:
             logger.error("❌ GEMINI_API_KEY not found in environment variables")
@@ -98,20 +96,31 @@ Return ONLY the JSON object."""
     ) -> Dict[str, Any]:
         """
         Analyze handwriting image with Gemini AI.
-        """
-        # Get model from env or default to gemini-2.0-flash (newest available on new SDK)
-        # Try gemini-2.0-flash first, fallback to gemini-2.5-flash if needed
-        model_name = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
         
-        # Remove 'models/' prefix if present (some API versions include it)
+        Enhanced logging includes:
+        - request_id (UUID)
+        - target_char_length (not the actual value)
+        - image_bytes_size
+        - model_used
+        - latency_ms
+        - fallback_used (boolean)
+        """
+        # Generate request ID for tracking
+        request_id = str(uuid.uuid4())
+        start_time = time.time()
+        fallback_used = False
+        
+        # Get model from settings
+        model_name = settings.GEMINI_MODEL
+        
+        # Remove 'models/' prefix if present
         if model_name.startswith('models/'):
             model_name = model_name.replace('models/', '')
         
-        # List of working models to try in order (most compatible first)
-        # Note: gemini-1.5-flash is NOT available for v1beta API
+        # List of working models to try in order
         working_models = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro']
         
-        # If the configured model is invalid (like gemini-1.5-flash), use working models only
+        # If the configured model is invalid, use working models only
         if model_name not in working_models:
             logger.warning(f"⚠️ Model '{model_name}' may not be available. Using fallback models.")
             models_to_try = working_models
@@ -119,19 +128,39 @@ Return ONLY the JSON object."""
             # Use configured model first, then fallbacks
             models_to_try = [model_name] + [m for m in working_models if m != model_name]
         
+        # Decode base64 image
+        try:
+            image_bytes = base64.b64decode(image_base64)
+            image_bytes_size = len(image_bytes)
+        except Exception as e:
+            logger.error(f"❌ [{request_id}] Failed to decode base64: {e}")
+            fallback_used = True
+            latency_ms = int((time.time() - start_time) * 1000)
+            logger.info(
+                f"📊 [{request_id}] "
+                f"target_char_length={len(target_char)} "
+                f"image_bytes_size=0 "
+                f"model_used=none "
+                f"latency_ms={latency_ms} "
+                f"fallback_used={fallback_used}"
+            )
+            return self.FALLBACK_RESPONSE
+        
+        # Log initial request info
+        logger.info(
+            f"📨 [{request_id}] "
+            f"target_char_length={len(target_char)} "
+            f"image_bytes_size={image_bytes_size}"
+        )
+        
         # Try each model in the fallback list
         last_error = None
+        model_used = None
+        
         for model_to_try in models_to_try:
             for attempt in range(max_retries):
                 try:
-                    logger.info(f"🔍 Attempt {attempt + 1}/{max_retries}: Analyzing for '{target_char}' using {model_to_try}")
-                    
-                    # Decode base64 image
-                    try:
-                        image_bytes = base64.b64decode(image_base64)
-                    except Exception as e:
-                        logger.error(f"❌ Failed to decode base64: {e}")
-                        return self.FALLBACK_RESPONSE
+                    logger.info(f"🔍 [{request_id}] Attempt {attempt + 1}/{max_retries} using {model_to_try}")
                     
                     # Prepare prompt and content
                     prompt = self.ANALYSIS_PROMPT_TEMPLATE.format(target_char=target_char)
@@ -164,7 +193,7 @@ Return ONLY the JSON object."""
                     
                     # Extract text
                     if not response.text:
-                        logger.warning("⚠️ Empty response from Gemini")
+                        logger.warning(f"⚠️ [{request_id}] Empty response from Gemini")
                         if attempt < max_retries - 1:
                             await asyncio.sleep(1)
                             continue
@@ -172,18 +201,18 @@ Return ONLY the JSON object."""
                         break
                     
                     raw_text = response.text.strip()
-                    logger.info(f"📝 Raw Gemini response: {raw_text[:200]}...")
+                    logger.info(f"📝 [{request_id}] Raw Gemini response: {raw_text[:200]}...")
                     
                     # Parse JSON
                     try:
                         result = json.loads(raw_text)
                     except json.JSONDecodeError:
-                        # Try to strip markdown code blocks if present (despite prompt instruction)
+                        # Try to strip markdown code blocks if present
                         clean_text = raw_text.replace('```json', '').replace('```', '').strip()
                         try:
                             result = json.loads(clean_text)
                         except json.JSONDecodeError as e:
-                            logger.error(f"❌ Failed to parse JSON: {e}")
+                            logger.error(f"❌ [{request_id}] Failed to parse JSON: {e}")
                             if attempt < max_retries - 1:
                                 await asyncio.sleep(1)
                                 continue
@@ -192,13 +221,21 @@ Return ONLY the JSON object."""
                     
                     # Validate
                     validated = self._validate_response(result)
-                    logger.info(f"✅ Analysis successful with {model_to_try}: {validated['shape_similarity']} similarity")
+                    model_used = model_to_try
+                    latency_ms = int((time.time() - start_time) * 1000)
+                    
+                    logger.info(
+                        f"✅ [{request_id}] Analysis successful: "
+                        f"model_used={model_used} "
+                        f"latency_ms={latency_ms} "
+                        f"fallback_used={fallback_used} "
+                        f"shape_similarity={validated['shape_similarity']}"
+                    )
+                    
                     return validated
                     
                 except Exception as e:
-                    import traceback
-                    error_details = traceback.format_exc()
-                    logger.error(f"❌ Error on attempt {attempt + 1} with {model_to_try}: {type(e).__name__}: {e}")
+                    logger.error(f"❌ [{request_id}] Error on attempt {attempt + 1} with {model_to_try}: {type(e).__name__}: {e}")
                     last_error = e
                     if attempt < max_retries - 1:
                         await asyncio.sleep(1)
@@ -206,12 +243,27 @@ Return ONLY the JSON object."""
                     # If this model failed all retries, try next model
                     break
         
-        logger.error(f"❌ All models and retry attempts failed. Last error: {last_error}")
+        # All models and retries failed - use fallback
+        fallback_used = True
+        latency_ms = int((time.time() - start_time) * 1000)
+        
+        logger.error(
+            f"❌ [{request_id}] All models and retry attempts failed. "
+            f"Last error: {last_error}"
+        )
+        logger.info(
+            f"📊 [{request_id}] "
+            f"target_char_length={len(target_char)} "
+            f"image_bytes_size={image_bytes_size} "
+            f"model_used={model_used or 'none'} "
+            f"latency_ms={latency_ms} "
+            f"fallback_used={fallback_used}"
+        )
+        
         return self.FALLBACK_RESPONSE
     
     def _validate_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Validate and sanitize response."""
-        # Same validation logic as before
         similarity = str(response.get('shape_similarity', 'medium')).lower()
         if similarity not in ['high', 'medium', 'low']:
             similarity = 'medium'
@@ -235,5 +287,6 @@ Return ONLY the JSON object."""
             "description": description
         }
 
+
 # Singleton instance
-gemini_service = GeminiService()
+handwriting_service = HandwritingService()
